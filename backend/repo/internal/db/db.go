@@ -19,14 +19,15 @@ type DB interface {
 
 // Store implements DB using a *sql.DB connection pool.
 type Store struct {
-	db *sql.DB
+	db   *sql.DB
+	name string
 }
 
 var errNilDB = errors.New("db: nil *sql.DB")
 
 // NewStore returns a Store that uses pool for all queries.
-func NewStore(pool *sql.DB) *Store {
-	return &Store{db: pool}
+func NewStore(pool *sql.DB, name string) *Store {
+	return &Store{db: pool, name: name}
 }
 
 // Compile-time assertion that Store implements DB.
