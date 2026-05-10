@@ -7,5 +7,8 @@ import (
 )
 
 func (s *Service) CreateRecipe(ctx context.Context, recipe types.Recipe) error {
+	if err := ValidateRecipeForCreate(recipe); err != nil {
+		return err
+	}
 	return s.store.CreateRecipe(ctx, recipe)
 }

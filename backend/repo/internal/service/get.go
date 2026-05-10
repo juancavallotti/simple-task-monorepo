@@ -11,5 +11,8 @@ func (s *Service) GetRecipes(ctx context.Context) ([]types.Recipe, error) {
 }
 
 func (s *Service) GetRecipe(ctx context.Context, id string) (types.Recipe, error) {
+	if err := ValidateRecipeID(id); err != nil {
+		return types.Recipe{}, err
+	}
 	return s.store.GetRecipe(ctx, id)
 }
