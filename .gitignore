@@ -1,0 +1,20 @@
+# Secrets / local env files (samples stay tracked — see ! rules below)
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# Go
+bin/
+dist/
+*.exe
+*.test
+*.out
+vendor/
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo

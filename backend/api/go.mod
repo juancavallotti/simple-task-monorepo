@@ -2,7 +2,11 @@ module juancavallotti.com/recipes-api
 
 go 1.26.2
 
-require github.com/gin-gonic/gin v1.12.0
+require (
+	github.com/gin-gonic/gin v1.12.0
+	github.com/joho/godotenv v1.5.1
+	juancavallotti.com/recipe-types v0.0.0
+)
 
 require (
 	github.com/bytedance/gopkg v0.1.3 // indirect
@@ -35,3 +39,5 @@ require (
 	golang.org/x/text v0.34.0 // indirect
 	google.golang.org/protobuf v1.36.10 // indirect
 )
+
+replace juancavallotti.com/recipe-types => ../types
