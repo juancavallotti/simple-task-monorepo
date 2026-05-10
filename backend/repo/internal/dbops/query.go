@@ -28,7 +28,7 @@ ORDER BY created_at DESC`)
 	}
 	defer rows.Close()
 
-	var out []types.Recipe
+	out := make([]types.Recipe, 0)
 	for rows.Next() {
 		var r types.Recipe
 		if err := rows.Scan(&r.ID, &r.Name, &r.Description, &r.Category, &r.Image, &r.CreatedAt, &r.UpdatedAt); err != nil {
