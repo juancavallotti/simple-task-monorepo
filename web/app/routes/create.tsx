@@ -25,8 +25,8 @@ export default function CreateRecipe() {
     setError(null);
     setSubmitting(true);
     try {
-      await createRecipe(draftToCreateBody(draft));
-      navigate("/");
+      const created = await createRecipe(draftToCreateBody(draft));
+      navigate(`/recipe/${created.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {

@@ -100,43 +100,45 @@ export default function RecipesIndex() {
       {!error && recipes !== null && recipes.length > 0 ? (
         <ul className="mt-8 flex flex-col gap-3">
           {recipes.map((r) => (
-            <li
-              key={r.id}
-              className="flex gap-4 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
-            >
-              <div className="size-20 shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
-                {r.image.trim() !== "" ? (
-                  <img
-                    src={r.image}
-                    alt=""
-                    className="size-full object-cover"
-                  />
-                ) : (
-                  <div className="flex size-full items-center justify-center text-zinc-400 dark:text-zinc-500">
-                    <ChefHat className="size-8 stroke-[1.5]" aria-hidden />
-                  </div>
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-baseline gap-2">
-                  <h3 className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                    {r.name}
-                  </h3>
-                  {r.category.trim() !== "" ? (
-                    <span className="shrink-0 rounded-md bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
-                      {r.category}
-                    </span>
-                  ) : null}
+            <li key={r.id}>
+              <Link
+                to={`/recipe/${r.id}`}
+                className="flex gap-4 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm outline-none transition-colors hover:border-zinc-300 hover:bg-zinc-50/80 focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-100 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700 dark:hover:bg-zinc-800/50 dark:focus-visible:ring-zinc-500 dark:focus-visible:ring-offset-zinc-950"
+              >
+                <div className="size-20 shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
+                  {r.image.trim() !== "" ? (
+                    <img
+                      src={r.image}
+                      alt=""
+                      className="size-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex size-full items-center justify-center text-zinc-400 dark:text-zinc-500">
+                      <ChefHat className="size-8 stroke-[1.5]" aria-hidden />
+                    </div>
+                  )}
                 </div>
-                {r.description.trim() !== "" ? (
-                  <p className="mt-1 line-clamp-2 text-sm text-zinc-600 dark:text-zinc-400">
-                    {r.description}
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-baseline gap-2">
+                    <h3 className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                      {r.name}
+                    </h3>
+                    {r.category.trim() !== "" ? (
+                      <span className="shrink-0 rounded-md bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                        {r.category}
+                      </span>
+                    ) : null}
+                  </div>
+                  {r.description.trim() !== "" ? (
+                    <p className="mt-1 line-clamp-2 text-sm text-zinc-600 dark:text-zinc-400">
+                      {r.description}
+                    </p>
+                  ) : null}
+                  <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-500">
+                    Added {formatDate(r.created_at)}
                   </p>
-                ) : null}
-                <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-500">
-                  Added {formatDate(r.created_at)}
-                </p>
-              </div>
+                </div>
+              </Link>
             </li>
           ))}
         </ul>

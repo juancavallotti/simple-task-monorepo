@@ -42,6 +42,14 @@ export async function listRecipes(): Promise<Recipe[]> {
   return res.json() as Promise<Recipe[]>;
 }
 
+export async function getRecipe(id: string): Promise<Recipe> {
+  const res = await fetch(`${getApiBase()}/recipes/${encodeURIComponent(id)}`);
+  if (!res.ok) {
+    throw await readJsonError(res);
+  }
+  return res.json() as Promise<Recipe>;
+}
+
 export async function createRecipe(body: CreateRecipeBody): Promise<Recipe> {
   const res = await fetch(`${getApiBase()}/recipes`, {
     method: "POST",
