@@ -25,6 +25,23 @@ export function getApiBase(): string {
   return "/api";
 }
 
+async function readJsonError(res: Response): Promise<Error> {
+  const err = (await res.json().catch(() => null)) as { error?: string } | null;
+  const msg =
+    err != null && typeof err.error === "string" && err.error.length > 0
+      ? err.error
+      : `Request failed (${res.status})`;
+  return new Error(msg);
+}
+
+export async function listRecipes(): Promise<Recipe[]> {
+  const res = await fetch(`${getApiBase()}/recipes`);
+  if (!res.ok) {
+    throw await readJsonError(res);
+  }
+  return res.json() as Promise<Recipe[]>;
+}
+
 export async function createRecipe(body: CreateRecipeBody): Promise<Recipe> {
   const res = await fetch(`${getApiBase()}/recipes`, {
     method: "POST",
@@ -32,12 +49,7 @@ export async function createRecipe(body: CreateRecipeBody): Promise<Recipe> {
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    const err = (await res.json().catch(() => null)) as { error?: string } | null;
-    const msg =
-      err != null && typeof err.error === "string" && err.error.length > 0
-        ? err.error
-        : `Request failed (${res.status})`;
-    throw new Error(msg);
+    throw await readJsonError(res);
   }
   return res.json() as Promise<Recipe>;
 }
