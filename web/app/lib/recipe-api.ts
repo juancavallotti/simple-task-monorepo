@@ -70,3 +70,18 @@ export async function deleteRecipe(id: string): Promise<void> {
     throw await readJsonError(res);
   }
 }
+
+export async function replaceRecipe(recipe: Recipe): Promise<Recipe> {
+  const res = await fetch(
+    `${getApiBase()}/recipes/${encodeURIComponent(recipe.id)}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(recipe),
+    },
+  );
+  if (!res.ok) {
+    throw await readJsonError(res);
+  }
+  return res.json() as Promise<Recipe>;
+}

@@ -45,3 +45,16 @@ export function draftToCreateBody(draft: RecipeDraft) {
     instructions: draft.instructions.map((s) => s.trim()).filter(Boolean),
   };
 }
+
+/** Full recipe body for PUT /recipes/:id (keeps id and timestamps from the loaded row). */
+export function draftToRecipeForReplace(
+  existing: Recipe,
+  draft: RecipeDraft,
+): Recipe {
+  const trimmed = draftToCreateBody(draft);
+  return {
+    ...existing,
+    ...trimmed,
+    id: existing.id,
+  };
+}

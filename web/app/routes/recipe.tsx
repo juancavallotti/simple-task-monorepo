@@ -1,4 +1,4 @@
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Pencil } from "lucide-react";
 import { useEffect } from "react";
 import { Link, useParams } from "react-router";
 
@@ -56,13 +56,24 @@ function RecipeDetailContent() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <Link
-        to="/"
-        className="inline-flex items-center gap-2 text-sm font-medium text-zinc-600 underline-offset-2 hover:text-zinc-900 hover:underline dark:text-zinc-400 dark:hover:text-zinc-100"
-      >
-        <ArrowLeft className="size-4 stroke-[2]" aria-hidden />
-        All recipes
-      </Link>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Link
+          to="/"
+          className="inline-flex items-center gap-2 text-sm font-medium text-zinc-600 underline-offset-2 hover:text-zinc-900 hover:underline dark:text-zinc-400 dark:hover:text-zinc-100"
+        >
+          <ArrowLeft className="size-4 stroke-[2]" aria-hidden />
+          All recipes
+        </Link>
+        {!error && recipe !== null && id != null && id !== "" ? (
+          <Link
+            to={`/recipe/${id}/edit`}
+            className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-800 shadow-sm transition-colors hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-zinc-600 dark:hover:bg-zinc-800"
+          >
+            <Pencil className="size-4 stroke-[2]" aria-hidden />
+            Edit
+          </Link>
+        ) : null}
+      </div>
 
       {error ? (
         <div
