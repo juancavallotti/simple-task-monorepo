@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 
+	_ "github.com/lib/pq"
+
 	types "juancavallotti.com/recipe-types"
 	"juancavallotti.com/recipes-repo/internal/dbops"
 	"juancavallotti.com/recipes-repo/internal/service"
@@ -47,6 +49,6 @@ func NewRepo() (*Repo, error) {
 		return nil, err
 	}
 
-	store := dbops.NewStore(pool, "recipes")
+	store := dbops.NewStore(pool)
 	return &Repo{service: service.NewService(store)}, nil
 }

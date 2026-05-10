@@ -2,7 +2,10 @@ package dbops
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
+	"github.com/google/uuid"
 	types "juancavallotti.com/recipe-types"
 )
 
@@ -13,6 +16,37 @@ func (s *Store) UpdateRecipe(ctx context.Context, recipe types.Recipe) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	_ = recipe
+	id := strings.TrimSpace(recipe.ID)
+	if _, err := uuid.Parse(id); err != nil {
+		return fmt.Errorf("invalid recipe id: %w", err)
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	res, err := tx.ExecContext(ctx, `
+UPDATE recipes
+SET name = $2, description = $3, category = $4, image = $5
+WHERE id = $1::uuid`,
+		id, recipe.Name, recipe.Description, recipe.Category, recipe.Image)
+	if err != nil {
+		return err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return ErrRecipeNotFound
+	}
+	if err := s.replaceIngredientsAndSteps(ctx, tx, id, recipe); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
 	return nil
 }
