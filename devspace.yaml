@@ -1,0 +1,83 @@
+version: v2beta1
+name: simple-task-monorepo
+
+images:
+  db:
+    image: recipes-db
+    tags:
+      - latest
+    context: ./database
+    dockerfile: ./database/Dockerfile
+    skipPush: true
+    createPullSecret: false
+
+  api:
+    image: recipes-api
+    tags:
+      - latest
+    context: ./backend
+    dockerfile: ./backend/Dockerfile
+    skipPush: true
+    createPullSecret: false
+
+  web:
+    image: recipes-web
+    tags:
+      - latest
+    context: ./web
+    dockerfile: ./web/Dockerfile
+    skipPush: true
+    createPullSecret: false
+
+deployments:
+  recipes:
+    helm:
+      releaseName: recipes
+      chart:
+        name: ./helm/recipes
+      valuesFiles:
+        - ./helm/recipes/values.yaml
+      values:
+        # Never only works if the image is already on the node (e.g. kind load). IfNotPresent
+        # uses images from the same Docker daemon as Docker Desktop Kubernetes after build_images.
+        postgres:
+          image:
+            repository: ${runtime.images.db.image}
+            tag: ${runtime.images.db.tag}
+            pullPolicy: IfNotPresent
+        backend:
+          image:
+            repository: ${runtime.images.api.image}
+            tag: ${runtime.images.api.tag}
+            pullPolicy: IfNotPresent
+        web:
+          image:
+            repository: ${runtime.images.web.image}
+            tag: ${runtime.images.web.tag}
+            pullPolicy: IfNotPresent
+          service:
+            type: NodePort
+            port: 3000
+
+dev:
+  api:
+    labelSelector:
+      app.kubernetes.io/component: backend
+    ports:
+      - port: "4000:4000"
+  web:
+    labelSelector:
+      app.kubernetes.io/component: web
+    ports:
+      - port: "3000:3000"
+
+pipelines:
+  dev:
+    run: |-
+      build_images --all
+      create_deployments --all
+      start_dev --all
+  deploy:
+    run: |-
+      build_images --all
+      create_deployments --all

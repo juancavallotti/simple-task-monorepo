@@ -19,12 +19,13 @@ spec:
     spec:
       initContainers:
         - name: wait-for-postgres
-          image: busybox:1.36
+          image: "{{ .Values.postgres.image.repository }}:{{ .Values.postgres.image.tag }}"
+          imagePullPolicy: {{ .Values.postgres.image.pullPolicy }}
           command:
             - sh
             - -c
             - |
-              until nc -z {{ include "recipes.postgres.serviceName" . }} 5432; do
+              until pg_isready -q -h {{ include "recipes.postgres.serviceName" . }} -p 5432; do
                 echo "waiting for postgres"; sleep 2
               done
       containers:

@@ -23,12 +23,16 @@ spec:
     spec:
       initContainers:
         - name: wait-for-backend
-          image: busybox:1.36
+          image: "{{ .Values.web.image.repository }}:{{ .Values.web.image.tag }}"
+          imagePullPolicy: {{ .Values.web.image.pullPolicy }}
+          env:
+            - name: BACKEND_HOST
+              value: {{ include "recipes.backend.serviceName" . | quote }}
           command:
             - sh
             - -c
             - |
-              until nc -z {{ include "recipes.backend.serviceName" . }} 4000; do
+              until node -e "require('net').connect(4000,process.env.BACKEND_HOST,function(){process.exit(0)}).on('error',function(){process.exit(1)})"; do
                 echo "waiting for backend"; sleep 2
               done
       containers:
