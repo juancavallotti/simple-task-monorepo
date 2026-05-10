@@ -10,7 +10,7 @@ import {
 } from "~/state/edit-recipe/context";
 import { EditRecipeActionType } from "~/state/edit-recipe/types";
 
-import type { Route } from "./+types/recipe.edit";
+import type { Route } from "./+types/recipe-edit";
 
 export function meta({}: Route.MetaArgs) {
   return [
