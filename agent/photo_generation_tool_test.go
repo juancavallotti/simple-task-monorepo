@@ -69,10 +69,10 @@ func TestGenerateRecipePhotosContinuesAfterImageFailure(t *testing.T) {
 	if !result.Photos[0].Featured {
 		t.Fatal("first successful generated photo should be featured")
 	}
-	if result.Photos[0].Handle == "" || !strings.HasPrefix(result.Photos[0].Path, outputDir) {
-		t.Fatalf("photo handle/path = %q/%q, want saved file under output dir", result.Photos[0].Handle, result.Photos[0].Path)
+	if result.Photos[0].Handle == "" || !strings.HasPrefix(result.Photos[0].FilePath, outputDir) {
+		t.Fatalf("photo handle/filePath = %q/%q, want saved file under output dir", result.Photos[0].Handle, result.Photos[0].FilePath)
 	}
-	data, err := os.ReadFile(result.Photos[0].Path)
+	data, err := os.ReadFile(result.Photos[0].FilePath)
 	if err != nil {
 		t.Fatalf("read saved photo: %v", err)
 	}

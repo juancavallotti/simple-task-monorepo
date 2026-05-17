@@ -35,7 +35,7 @@ type generateRecipePhotosArgs struct {
 
 type generatedRecipePhoto struct {
 	Handle   string `json:"handle"`
-	Path     string `json:"path"`
+	FilePath string `json:"filePath"`
 	Featured bool   `json:"featured"`
 }
 
@@ -54,7 +54,7 @@ func newGenerateRecipePhotosTool(generator recipeImageGenerator, concurrency int
 	}
 	return functiontool.New(functiontool.Config{
 		Name:          "generate_recipe_photos",
-		Description:   "Generates up to four Gemini dish photos, saves them to local files, and returns file paths that can be passed to recipes-cli add-photo. This can take up to 45 seconds per photo.",
+		Description:   "Generates up to four Gemini dish photos, saves them to local files, and returns filePath values. Pass each filePath as the image-path argument to recipes-cli add-photo; do not pass generated photos through stdin or base64. This can take up to 45 seconds per photo.",
 		IsLongRunning: true,
 	}, generate)
 }
@@ -101,7 +101,7 @@ func generateRecipePhotos(ctx context.Context, generator recipeImageGenerator, i
 		log.Printf("tool generate_recipe_photos: photo=%d saved handle=%q bytes=%d generation_duration=%s", i+1, handle, len(item.imageData), item.duration.Round(time.Millisecond))
 		photos = append(photos, generatedRecipePhoto{
 			Handle:   handle,
-			Path:     path,
+			FilePath: path,
 			Featured: len(photos) == 0,
 		})
 	}
