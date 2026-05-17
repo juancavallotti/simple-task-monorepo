@@ -87,10 +87,10 @@ func (r Runner) Run(ctx context.Context, args []string) error {
 		return r.cmdPatch(ctx, repo, args[1], args[2])
 	case "add-photo":
 		if len(args) != 3 && len(args) != 4 {
-			return r.usageError("usage: recipes-cli add-photo <recipe-id> <image-path> [--featured]")
+			return r.usageError("usage: recipes-cli add-photo <recipe-id> <image-path|-> [--featured]")
 		}
 		if len(args) == 4 && args[3] != "--featured" {
-			return r.usageError("usage: recipes-cli add-photo <recipe-id> <image-path> [--featured]")
+			return r.usageError("usage: recipes-cli add-photo <recipe-id> <image-path|-> [--featured]")
 		}
 		return r.cmdAddPhoto(ctx, repo, args[1], args[2], len(args) == 4)
 	case "delete-photo":
@@ -123,8 +123,8 @@ Commands:
   export-all                    Print all recipes as JSON Lines (one JSON object per line).
   create <path>                 Read one recipe JSON object (use "-" for stdin); create it.
   patch <id> <path>             Read one partial recipe JSON object (use "-" for stdin); patch it.
-  add-photo <id> <path> [--featured]
-                                Base64-encode an image file and attach it to a recipe.
+  add-photo <id> <path|-> [--featured]
+                                Attach a photo; pass "-" to read raw base64 image data from stdin.
   delete-photo <id> <photo-id>  Remove a photo from a recipe by photo id.
   set-featured-photo <id> <photo-id>
                                 Mark a recipe photo as featured.

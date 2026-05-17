@@ -76,8 +76,9 @@ func newCreateRecipeWithGeneratedPhotosToolWithRunner(generator recipeImageGener
 		return createRecipeWithGeneratedPhotos(ctx, generator, runCLI, input)
 	}
 	return functiontool.New(functiontool.Config{
-		Name:        "create_recipe_with_generated_photos",
-		Description: "Creates a recipe with recipes-cli after attempting to generate two Gemini dish photos stored in the recipe photos array.",
+		Name:          "create_recipe_with_generated_photos",
+		Description:   "Creates a recipe with recipes-cli after attempting to generate two Gemini dish photos stored in the recipe photos array. This can take up to 90 seconds.",
+		IsLongRunning: true,
 	}, create)
 }
 

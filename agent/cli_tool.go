@@ -25,7 +25,7 @@ const (
 
 type callRecipesCLIArgs struct {
 	Args           []string `json:"args" jsonschema:"Arguments to pass to recipes-cli. Use an empty array to run recipes-cli with no arguments and inspect its help output."`
-	Stdin          string   `json:"stdin,omitempty" jsonschema:"Optional stdin content. Use this when passing '-' to recipes-cli commands that read JSON from stdin."`
+	Stdin          string   `json:"stdin,omitempty" jsonschema:"Optional stdin content. Use this when passing '-' to recipes-cli commands that read JSON or raw base64 image data from stdin."`
 	TimeoutSeconds int      `json:"timeoutSeconds,omitempty" jsonschema:"Optional timeout in seconds. Defaults to 15 and cannot exceed 30."`
 }
 
@@ -41,7 +41,7 @@ type callRecipesCLIResult struct {
 func newRecipesCLITool() (tool.Tool, error) {
 	return functiontool.New(functiontool.Config{
 		Name:        "call_recipes_cli",
-		Description: "Runs the installed recipes-cli binary with explicit arguments. Use it for recipe list, export, create, patch, import, and schema operations.",
+		Description: "Runs the installed recipes-cli binary with explicit arguments. Use it for recipe list, export, create, patch, add-photo, import, and schema operations.",
 	}, callRecipesCLI)
 }
 

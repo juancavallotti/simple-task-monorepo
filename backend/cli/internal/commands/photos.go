@@ -3,6 +3,8 @@ package commands
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -10,12 +12,12 @@ import (
 )
 
 func (r Runner) cmdAddPhoto(ctx context.Context, repo RecipeRepo, recipeID string, path string, featured bool) error {
-	data, err := os.ReadFile(path)
+	imageBase64, err := r.readPhotoBase64(path)
 	if err != nil {
 		return err
 	}
 	if _, err := repo.AddRecipePhoto(ctx, strings.TrimSpace(recipeID), types.Photo{
-		ImageBase64: base64.StdEncoding.EncodeToString(data),
+		ImageBase64: imageBase64,
 		Featured:    featured,
 	}); err != nil {
 		return err
@@ -25,6 +27,29 @@ func (r Runner) cmdAddPhoto(ctx context.Context, repo RecipeRepo, recipeID strin
 		return err
 	}
 	return r.writeIndentedJSON(updated)
+}
+
+func (r Runner) readPhotoBase64(path string) (string, error) {
+	if path != "-" {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return "", err
+		}
+		return base64.StdEncoding.EncodeToString(data), nil
+	}
+
+	data, err := io.ReadAll(r.stdin)
+	if err != nil {
+		return "", err
+	}
+	imageBase64 := strings.Join(strings.Fields(string(data)), "")
+	if imageBase64 == "" {
+		return "", fmt.Errorf("empty base64 image data")
+	}
+	if _, err := base64.StdEncoding.DecodeString(imageBase64); err != nil {
+		return "", fmt.Errorf("invalid base64 image data: %w", err)
+	}
+	return imageBase64, nil
 }
 
 func (r Runner) cmdDeletePhoto(ctx context.Context, repo RecipeRepo, recipeID string, photoID string) error {

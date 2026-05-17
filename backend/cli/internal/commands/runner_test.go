@@ -299,6 +299,43 @@ func TestRun_AddPhotoReadsFileAndPrintsUpdatedRecipe(t *testing.T) {
 	}
 }
 
+func TestRun_AddPhotoReadsBase64FromStdin(t *testing.T) {
+	repo := &fakeRepo{}
+	var factoryCalls int
+	r, stdout, _ := testRunner(" aW1n\n", repo, &factoryCalls)
+
+	if err := r.Run(context.Background(), []string{"add-photo", " recipe-1 ", "-", "--featured"}); err != nil {
+		t.Fatalf("Run add-photo: %v", err)
+	}
+	if repo.addPhotoCalls != 1 {
+		t.Fatalf("add photo calls = %d, want 1", repo.addPhotoCalls)
+	}
+	if repo.addedPhoto.ImageBase64 != "aW1n" || !repo.addedPhoto.Featured {
+		t.Fatalf("added photo = %#v", repo.addedPhoto)
+	}
+	var out types.Recipe
+	if err := json.Unmarshal(stdout.Bytes(), &out); err != nil {
+		t.Fatalf("output is not recipe JSON: %v\n%s", err, stdout.String())
+	}
+	if out.ID != "recipe-1" || len(out.Photos) != 1 {
+		t.Fatalf("output recipe = %#v", out)
+	}
+}
+
+func TestRun_AddPhotoRejectsInvalidBase64FromStdin(t *testing.T) {
+	repo := &fakeRepo{}
+	var factoryCalls int
+	r, _, _ := testRunner("not base64!", repo, &factoryCalls)
+
+	err := r.Run(context.Background(), []string{"add-photo", "recipe-1", "-"})
+	if err == nil || !strings.Contains(err.Error(), "invalid base64 image data") {
+		t.Fatalf("err = %v, want invalid base64 image data", err)
+	}
+	if repo.addPhotoCalls != 0 {
+		t.Fatalf("add photo calls = %d, want 0", repo.addPhotoCalls)
+	}
+}
+
 func TestRun_DeletePhotoRemovesPhotoAndPrintsUpdatedRecipe(t *testing.T) {
 	repo := &fakeRepo{}
 	var factoryCalls int
