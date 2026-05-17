@@ -1,7 +1,42 @@
 version: "3"
 
+vars:
+  CHART_DIR: helm
+  OCI_REGISTRY: registry-1.docker.io
+  OCI_USER:
+    sh: '[ -n "$DOCKER_USER" ] && printf %s "$DOCKER_USER" || { [ -n "$OCI_USER" ] && printf %s "$OCI_USER" || printf %s juancavallotti; }'
+
 tasks:
   helm:lint:
     desc: Lint the recipes Helm chart
     cmds:
-      - helm lint helm/recipes
+      - helm lint {{.CHART_DIR}}
+
+  helm:template:
+    desc: Render chart (optional INGRESS=1 to enable ingress)
+    cmds:
+      - |
+        set -e
+        EXTRA=""
+        if [ "${INGRESS:-}" = "1" ]; then
+          EXTRA="--set ingress.enabled=true"
+        fi
+        helm template recipes {{.CHART_DIR}} $EXTRA
+
+  helm:package:
+    desc: Lint and package chart to dist/ (recipes-<version>.tgz)
+    dir: "{{.ROOT_DIR}}"
+    cmds:
+      - mkdir -p dist
+      - helm lint {{.CHART_DIR}}
+      - helm package {{.CHART_DIR}} -d dist
+
+  helm:push:
+    desc: Package and push chart to Docker Hub OCI (helm registry login required)
+    dir: "{{.ROOT_DIR}}"
+    cmds:
+      - task: helm:package
+      - |
+        set -e
+        VERSION="$(helm show chart {{.CHART_DIR}} | awk '/^version:/ {print $2}')"
+        helm push "dist/recipes-${VERSION}.tgz" "oci://{{.OCI_REGISTRY}}/{{.OCI_USER}}"

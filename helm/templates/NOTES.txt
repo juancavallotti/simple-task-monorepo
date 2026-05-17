@@ -1,0 +1,11 @@
+1. Images (build from repo root paths shown in values.yaml comments).
+
+2. Local cluster (no Ingress):
+     kubectl port-forward svc/{{ include "recipes.fullname" . }}-web {{ .Values.web.service.port }}:{{ .Values.web.service.port }}
+   Or use NodePort and open http://<node-ip>:<nodePort>.
+
+   RECIPES_API_BASE defaults to the in-cluster backend (http://{{ include "recipes.fullname" . }}-backend:4000).
+
+3. With Ingress (ingress.enabled=true):
+   Only the web app is exposed (path /). The API stays in-cluster; no web.recipesApiBase required.
+   Open http://{{ .Values.ingress.host }}/ after pointing that host at your ingress controller.

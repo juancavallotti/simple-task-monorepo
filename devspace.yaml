@@ -1,9 +1,14 @@
 version: v2beta1
 name: simple-task-monorepo
 
+vars:
+  DOCKER_USER:
+    source: env
+    default: juancavallotti
+
 images:
   db:
-    image: recipes-db
+    image: ${DOCKER_USER}/recipes-db
     tags:
       - latest
     context: ./database
@@ -12,7 +17,7 @@ images:
     createPullSecret: false
 
   api:
-    image: recipes-api
+    image: ${DOCKER_USER}/recipes-api
     tags:
       - latest
     context: ./backend
@@ -21,7 +26,7 @@ images:
     createPullSecret: false
 
   web:
-    image: recipes-web
+    image: ${DOCKER_USER}/recipes-web
     tags:
       - latest
     context: ./web
@@ -34,9 +39,9 @@ deployments:
     helm:
       releaseName: recipes
       chart:
-        name: ./helm/recipes
+        name: ./helm
       valuesFiles:
-        - ./helm/recipes/values.yaml
+        - ./helm/values.yaml
       values:
         # Never only works if the image is already on the node (e.g. kind load). IfNotPresent
         # uses images from the same Docker daemon as Docker Desktop Kubernetes after build_images.

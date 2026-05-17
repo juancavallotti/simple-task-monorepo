@@ -1,13 +1,10 @@
-# Default images assume you build locally from this repo:
-#   docker build -t recipes-db ./database
-#   docker build -t recipes-api ./backend
-#   docker build -t recipes-web ./web
+# Images match `task build:images` / devspace (${DOCKER_USER}/recipes-*).
 nameOverride: ""
 fullnameOverride: ""
 
 postgres:
   image:
-    repository: recipes-db
+    repository: juancavallotti/recipes-db
     tag: latest
     pullPolicy: IfNotPresent
   auth:
@@ -21,7 +18,7 @@ postgres:
 
 backend:
   image:
-    repository: recipes-api
+    repository: juancavallotti/recipes-api
     tag: latest
     pullPolicy: IfNotPresent
   replicas: 1
@@ -29,13 +26,12 @@ backend:
 
 web:
   image:
-    repository: recipes-web
+    repository: juancavallotti/recipes-web
     tag: latest
     pullPolicy: IfNotPresent
   replicas: 1
-  # Public HTTP origin for the recipes API (no trailing slash). Browsers and SSR use this.
-  # With ingress.enabled: required — the API is not routed on that Ingress; expose it separately (e.g. another host).
-  # Without Ingress: leave empty to use the in-cluster backend Service URL.
+  # Optional override for RECIPES_API_BASE (server-side loaders/actions only; no trailing slash).
+  # Leave empty to use the in-cluster backend Service URL (works with or without Ingress).
   recipesApiBase: ""
   resources: {}
   service:
@@ -46,7 +42,7 @@ web:
 
 ingress:
   enabled: false
-  # Routes only / to the web app; does not expose the backend API.
+  # Routes only / to the web Service; backend API stays in-cluster (not on this Ingress).
   className: nginx
   host: recipes.local
   annotations: {}

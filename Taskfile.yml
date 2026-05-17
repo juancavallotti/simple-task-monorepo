@@ -1,9 +1,11 @@
 version: "3"
 
 vars:
-  IMAGE_DB: recipes-db
-  IMAGE_API: recipes-api
-  IMAGE_WEB: recipes-web
+  DOCKER_USER:
+    sh: '[ -n "$DOCKER_USER" ] && printf %s "$DOCKER_USER" || printf %s juancavallotti'
+  IMAGE_DB: "{{.DOCKER_USER}}/recipes-db"
+  IMAGE_API: "{{.DOCKER_USER}}/recipes-api"
+  IMAGE_WEB: "{{.DOCKER_USER}}/recipes-web"
   TAG: latest
 
 includes:
@@ -38,6 +40,14 @@ tasks:
   build:images:
     desc: Build all container images (db, API, web)
     deps: [build:image:db, build:image:api, build:image:web]
+
+  push:images:
+    desc: Push all images to Docker Hub ({{.DOCKER_USER}}/recipes-*:{{.TAG}})
+    deps: [build:images]
+    cmds:
+      - docker push {{.IMAGE_DB}}:{{.TAG}}
+      - docker push {{.IMAGE_API}}:{{.TAG}}
+      - docker push {{.IMAGE_WEB}}:{{.TAG}}
 
   test:
     desc: Run web and backend tests

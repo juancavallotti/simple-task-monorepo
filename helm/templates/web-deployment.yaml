@@ -1,6 +1,3 @@
-{{- if and .Values.ingress.enabled (eq (.Values.web.recipesApiBase | default "" | trim) "") }}
-{{- fail "recipes: when ingress.enabled is true, set web.recipesApiBase to your API's public origin; this chart does not expose the API on Ingress." }}
-{{- end }}
 {{- $apiBase := include "recipes.webRecipesApiBase" . | trim }}
 apiVersion: apps/v1
 kind: Deployment

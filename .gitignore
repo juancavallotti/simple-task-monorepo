@@ -22,3 +22,6 @@ database/data/
 *.swp
 *.swo
 .devspace/
+
+# Packaged Helm charts
+dist/
