@@ -10,8 +10,8 @@ import {
 } from "react-router";
 
 import { RecipeEditor } from "~/components/recipe-editor";
-import type { Recipe } from "~/lib/recipe-api";
-import { draftToRecipeForReplace } from "~/lib/recipe-draft";
+import type { RecipePatchBody } from "~/lib/recipe-api";
+import { draftToRecipePatch } from "~/lib/recipe-draft";
 import {
   EditRecipeProvider,
   useEditRecipeState,
@@ -39,25 +39,25 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
-  const { replaceRecipe } = await import("~/lib/recipes-http.server");
+  const { patchRecipe } = await import("~/lib/recipes-http.server");
   const { id } = params;
   if (id == null || id === "") {
     return { ok: false as const, error: "Missing recipe id." };
   }
-  if (request.method !== "POST") {
+  if (request.method !== "PATCH") {
     return null;
   }
-  let recipePayload: Recipe;
+  let recipePatch: RecipePatchBody;
   try {
-    recipePayload = (await request.json()) as Recipe;
+    recipePatch = (await request.json()) as RecipePatchBody;
   } catch {
     return { ok: false as const, error: "Invalid request body." };
   }
-  if (recipePayload.id !== id) {
-    return { ok: false as const, error: "Recipe id mismatch." };
+  if (typeof recipePatch.name !== "string") {
+    return { ok: false as const, error: "Invalid recipe data." };
   }
   try {
-    await replaceRecipe(request, recipePayload);
+    await patchRecipe(request, id, recipePatch);
     return redirect(`/recipe/${id}`);
   } catch (err) {
     return {
@@ -144,8 +144,8 @@ function RecipeEditContent() {
     e.preventDefault();
     if (baseRecipe == null || id == null || id === "") return;
     dispatch({ type: EditRecipeActionType.SUBMIT_START });
-    submit(draftToRecipeForReplace(baseRecipe, draft), {
-      method: "POST",
+    submit(draftToRecipePatch(draft), {
+      method: "PATCH",
       encType: "application/json",
     });
   }

@@ -1,4 +1,4 @@
-import type { Recipe } from "~/lib/recipe-api";
+import type { Recipe, RecipePatchBody } from "~/lib/recipe-api";
 
 /** Editable recipe fields (no id or timestamps). Shared by create and edit flows. */
 export type RecipeDraft = {
@@ -46,15 +46,7 @@ export function draftToCreateBody(draft: RecipeDraft) {
   };
 }
 
-/** Full recipe body for PUT /recipes/:id (keeps id and timestamps from the loaded row). */
-export function draftToRecipeForReplace(
-  existing: Recipe,
-  draft: RecipeDraft,
-): Recipe {
-  const trimmed = draftToCreateBody(draft);
-  return {
-    ...existing,
-    ...trimmed,
-    id: existing.id,
-  };
+/** Partial recipe body for PATCH /recipes/:id. Photos are intentionally omitted. */
+export function draftToRecipePatch(draft: RecipeDraft): RecipePatchBody {
+  return draftToCreateBody(draft);
 }

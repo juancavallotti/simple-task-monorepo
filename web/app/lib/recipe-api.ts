@@ -29,3 +29,5 @@ export type CreateRecipeBody = {
   ingredients: string[];
   instructions: string[];
 };
+
+export type RecipePatchBody = Partial<CreateRecipeBody>;

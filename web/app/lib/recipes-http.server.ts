@@ -1,4 +1,8 @@
-import type { CreateRecipeBody, Recipe } from "~/lib/recipe-api";
+import type {
+  CreateRecipeBody,
+  Recipe,
+  RecipePatchBody,
+} from "~/lib/recipe-api";
 
 if (typeof window !== "undefined") {
   throw new Error(
@@ -98,6 +102,23 @@ export async function replaceRecipe(
       body: JSON.stringify(recipe),
     },
   );
+  if (!res.ok) {
+    throw await readJsonError(res);
+  }
+  return res.json() as Promise<Recipe>;
+}
+
+export async function patchRecipe(
+  request: Request,
+  id: string,
+  patch: RecipePatchBody,
+): Promise<Recipe> {
+  const base = getApiBase(request);
+  const res = await fetch(`${base}/recipes/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  });
   if (!res.ok) {
     throw await readJsonError(res);
   }
