@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -59,6 +60,7 @@ func newGenerateRecipePhotosTool(generator recipeImageGenerator, concurrency int
 }
 
 func generateRecipePhotos(ctx context.Context, generator recipeImageGenerator, input generateRecipePhotosArgs, concurrency int, outputDir string) (generateRecipePhotosResult, error) {
+	start := time.Now()
 	result := generateRecipePhotosResult{
 		PhotosRequested: normalizedRecipePhotoCount(input.Count),
 		Capped:          input.Count > maxGeneratedRecipePhotoCount,
@@ -74,6 +76,7 @@ func generateRecipePhotos(ctx context.Context, generator recipeImageGenerator, i
 	if outputDir == "" {
 		outputDir = defaultImageOutputDir
 	}
+	log.Printf("tool generate_recipe_photos: start requested=%d concurrency=%d output_dir=%q", result.PhotosRequested, normalizedImageGenerationConcurrency(concurrency), outputDir)
 	if err := os.MkdirAll(outputDir, 0o700); err != nil {
 		return result, fmt.Errorf("create image output directory: %w", err)
 	}
@@ -85,14 +88,17 @@ func generateRecipePhotos(ctx context.Context, generator recipeImageGenerator, i
 	var imageErrors []string
 	for i, item := range generated {
 		if item.err != nil {
+			log.Printf("tool generate_recipe_photos: photo=%d generation_failed duration=%s error=%v", i+1, item.duration.Round(time.Millisecond), item.err)
 			imageErrors = append(imageErrors, fmt.Sprintf("photo %d: %v", i+1, item.err))
 			continue
 		}
 		path, handle, err := writeGeneratedRecipePhoto(outputDir, item.imageData)
 		if err != nil {
+			log.Printf("tool generate_recipe_photos: photo=%d save_failed bytes=%d error=%v", i+1, len(item.imageData), err)
 			imageErrors = append(imageErrors, fmt.Sprintf("photo %d: save generated image: %v", i+1, err))
 			continue
 		}
+		log.Printf("tool generate_recipe_photos: photo=%d saved handle=%q bytes=%d generation_duration=%s", i+1, handle, len(item.imageData), item.duration.Round(time.Millisecond))
 		photos = append(photos, generatedRecipePhoto{
 			Handle:   handle,
 			Path:     path,
@@ -102,11 +108,13 @@ func generateRecipePhotos(ctx context.Context, generator recipeImageGenerator, i
 	result.Photos = photos
 	result.PhotosGenerated = len(photos)
 	result.ImageErrors = imageErrors
+	log.Printf("tool generate_recipe_photos: done requested=%d generated=%d errors=%d duration=%s", result.PhotosRequested, result.PhotosGenerated, len(result.ImageErrors), time.Since(start).Round(time.Millisecond))
 	return result, nil
 }
 
 type generatedRecipePhotoAttempt struct {
 	imageData []byte
+	duration  time.Duration
 	err       error
 }
 
@@ -126,9 +134,11 @@ func generateRecipePhotosParallel(ctx context.Context, generator recipeImageGene
 
 			imageCtx, cancel := context.WithTimeout(ctx, imageGenerationTimeout)
 			defer cancel()
+			start := time.Now()
 			imageData, err := generator.GenerateRecipeImage(imageCtx, prompt)
 			results[i] = generatedRecipePhotoAttempt{
 				imageData: imageData,
+				duration:  time.Since(start),
 				err:       err,
 			}
 		}()

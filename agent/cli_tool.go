@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os/exec"
 	"strings"
 	"time"
@@ -63,6 +64,7 @@ func runRecipesCLIWithOutputLimit(ctx context.Context, input callRecipesCLIArgs,
 	defer cancel()
 
 	cmd := exec.CommandContext(runCtx, recipesCLIBinary, input.Args...)
+	log.Printf("tool call_recipes_cli: start args=%q timeout=%s stdin_bytes=%d", input.Args, timeout, len(input.Stdin))
 	if input.Stdin != "" {
 		cmd.Stdin = strings.NewReader(input.Stdin)
 	}
@@ -73,7 +75,9 @@ func runRecipesCLIWithOutputLimit(ctx context.Context, input callRecipesCLIArgs,
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
+	start := time.Now()
 	err := cmd.Run()
+	duration := time.Since(start)
 	result := callRecipesCLIResult{
 		Command:  strings.Join(append([]string{recipesCLIBinary}, input.Args...), " "),
 		ExitCode: exitCode(err),
@@ -82,6 +86,7 @@ func runRecipesCLIWithOutputLimit(ctx context.Context, input callRecipesCLIArgs,
 		TimedOut: errors.Is(runCtx.Err(), context.DeadlineExceeded),
 	}
 	result.Successful = err == nil
+	log.Printf("tool call_recipes_cli: done args=%q exit_code=%d success=%t timed_out=%t stdout_bytes=%d stderr_bytes=%d duration=%s", input.Args, result.ExitCode, result.Successful, result.TimedOut, stdout.buf.Len(), stderr.buf.Len(), duration.Round(time.Millisecond))
 
 	if err != nil && result.ExitCode == -1 && !result.TimedOut {
 		return result, fmt.Errorf("run %s: %w", recipesCLIBinary, err)
