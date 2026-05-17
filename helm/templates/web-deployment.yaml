@@ -29,7 +29,7 @@ spec:
             - sh
             - -c
             - |
-              until node -e "require('net').connect(4000,process.env.BACKEND_HOST,function(){process.exit(0)}).on('error',function(){process.exit(1)})"; do
+              until node -e "var s=require('net').connect(4000,process.env.BACKEND_HOST,function(){process.exit(0)}); s.setTimeout(2000,function(){process.exit(1)}); s.on('error',function(){process.exit(1)})"; do
                 echo "waiting for backend"; sleep 2
               done
       containers:

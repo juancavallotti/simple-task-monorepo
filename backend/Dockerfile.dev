@@ -1,0 +1,25 @@
+# Recipes API development image.
+#
+# Keeps the Go toolchain in the container so DevSpace can sync source files and
+# restart `go run ./api` without rebuilding the production image.
+
+FROM golang:1.26-alpine
+
+RUN apk add --no-cache ca-certificates git
+
+WORKDIR /workspace/backend
+
+# Prime the module cache before copying all source.
+COPY go.work go.work.sum ./
+COPY api/go.mod   api/go.sum   api/
+COPY cli/go.mod   cli/go.sum   cli/
+COPY repo/go.mod  repo/go.sum  repo/
+COPY types/go.mod              types/
+RUN go mod download
+
+COPY . .
+
+ENV API_ADDR=:4000
+EXPOSE 4000
+
+CMD ["go", "run", "./api"]

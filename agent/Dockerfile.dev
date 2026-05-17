@@ -1,0 +1,31 @@
+# Recipes agent development image.
+#
+# Build context MUST be the repository root. This image keeps the Go toolchain
+# and rebuilds recipes-cli before starting the synced agent source.
+
+FROM golang:1.26-alpine
+
+RUN apk add --no-cache ca-certificates git
+
+WORKDIR /workspace
+
+# Prime the agent module cache.
+COPY agent/go.mod agent/go.sum agent/
+RUN cd agent && go mod download
+
+# Prime the backend workspace cache for recipes-cli.
+COPY backend/go.work backend/go.work.sum backend/
+COPY backend/api/go.mod  backend/api/go.sum  backend/api/
+COPY backend/cli/go.mod  backend/cli/go.sum  backend/cli/
+COPY backend/repo/go.mod backend/repo/go.sum backend/repo/
+COPY backend/types/go.mod                 backend/types/
+RUN cd backend && go mod download
+
+COPY agent/ agent/
+COPY backend/ backend/
+
+ENV AGENT_ADDR=:4100 \
+    AGENT_MODEL=gemini-3.1-flash-lite
+EXPOSE 4100
+
+CMD ["sh", "-c", "cd /workspace/backend && go build -o /usr/local/bin/recipes-cli ./cli && cd /workspace/agent && go run ."]

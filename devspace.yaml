@@ -29,6 +29,15 @@ images:
     skipPush: true
     createPullSecret: false
 
+  apidev:
+    image: ${DOCKER_USER}/recipes-api-dev
+    tags:
+      - latest
+    context: ./backend
+    dockerfile: ./backend/Dockerfile.dev
+    skipPush: true
+    createPullSecret: false
+
   agent:
     image: ${DOCKER_USER}/recipes-agent
     tags:
@@ -38,12 +47,30 @@ images:
     skipPush: true
     createPullSecret: false
 
+  agentdev:
+    image: ${DOCKER_USER}/recipes-agent-dev
+    tags:
+      - latest
+    context: .
+    dockerfile: ./agent/Dockerfile.dev
+    skipPush: true
+    createPullSecret: false
+
   web:
     image: ${DOCKER_USER}/recipes-web
     tags:
       - latest
     context: ./web
     dockerfile: ./web/Dockerfile
+    skipPush: true
+    createPullSecret: false
+
+  webdev:
+    image: ${DOCKER_USER}/recipes-web-dev
+    tags:
+      - latest
+    context: ./web
+    dockerfile: ./web/Dockerfile.dev
     skipPush: true
     createPullSecret: false
 
@@ -86,16 +113,71 @@ dev:
   api:
     labelSelector:
       app.kubernetes.io/component: backend
+    devImage: ${runtime.images.apidev.image}:${runtime.images.apidev.tag}
+    workingDir: /workspace/backend
+    command: ["go"]
+    args: ["run", "./api"]
+    restartHelper:
+      inject: true
+    sync:
+      - path: ./backend:/workspace/backend
+        uploadExcludePaths:
+          - .git/
+          - api/recipes-api
+          - cli/recipes-cli
+          - "**/*.test"
+          - "**/*.out"
+        onUpload:
+          restartContainer: true
     ports:
       - port: "4000:4000"
   agent:
     labelSelector:
       app.kubernetes.io/component: agent
+    devImage: ${runtime.images.agentdev.image}:${runtime.images.agentdev.tag}
+    workingDir: /workspace
+    command: ["sh", "-c"]
+    args:
+      - cd /workspace/backend && go build -o /usr/local/bin/recipes-cli ./cli && cd /workspace/agent && go run .
+    restartHelper:
+      inject: true
+    sync:
+      - path: ./agent:/workspace/agent
+        uploadExcludePaths:
+          - recipes-agent
+          - "**/*.test"
+          - "**/*.out"
+        onUpload:
+          restartContainer: true
+      - path: ./backend:/workspace/backend
+        uploadExcludePaths:
+          - api/recipes-api
+          - cli/recipes-cli
+          - "**/*.test"
+          - "**/*.out"
+        onUpload:
+          restartContainer: true
     ports:
       - port: "4100:4100"
   web:
     labelSelector:
       app.kubernetes.io/component: web
+    devImage: ${runtime.images.webdev.image}:${runtime.images.webdev.tag}
+    workingDir: /workspace/web
+    command: ["npm"]
+    args: ["run", "dev", "--", "--host", "0.0.0.0", "--port", "3000"]
+    sync:
+      - path: ./web:/workspace/web
+        uploadExcludePaths:
+          - node_modules/
+          - build/
+        onUpload:
+          exec:
+            - name: npm install
+              command: npm install
+              onChange:
+                - package.json
+                - package-lock.json
     ports:
       - port: "3000:3000"
 
