@@ -80,15 +80,13 @@ async function ensureSession(baseURL: string, userID: string, sessionID: string)
   }
 }
 
-function appendToMessage(
+function replaceMessageContent(
   messages: ChatMessage[],
   messageID: string,
-  chunk: string,
+  content: string,
 ): ChatMessage[] {
   return messages.map((message) =>
-    message.id === messageID
-      ? { ...message, content: `${message.content}${chunk}` }
-      : message,
+    message.id === messageID ? { ...message, content } : message,
   );
 }
 
@@ -112,6 +110,7 @@ async function readAgentStream(
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+  let accumulatedText = "";
 
   while (true) {
     const { done, value } = await reader.read();
@@ -133,8 +132,24 @@ async function readAgentStream(
       if ("error" in parsed && typeof parsed.error === "string") {
         throw new Error(parsed.error);
       }
-      const text = extractText(parsed as AgentEvent);
-      if (text !== "") onText(text);
+      const event = parsed as AgentEvent;
+      const text = extractText(event);
+      if (text === "") continue;
+
+      if (event.partial) {
+        accumulatedText = text.startsWith(accumulatedText)
+          ? text
+          : `${accumulatedText}${text}`;
+      } else if (
+        accumulatedText === "" ||
+        text.startsWith(accumulatedText)
+      ) {
+        accumulatedText = text;
+      } else if (!accumulatedText.endsWith(text)) {
+        accumulatedText = `${accumulatedText}${text}`;
+      }
+
+      onText(accumulatedText);
     }
   }
 }
@@ -242,7 +257,9 @@ export function AgentChat() {
       }
 
       await readAgentStream(res, (chunk) => {
-        setMessages((current) => appendToMessage(current, assistantID, chunk));
+        setMessages((current) =>
+          replaceMessageContent(current, assistantID, chunk),
+        );
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Agent request failed.");
