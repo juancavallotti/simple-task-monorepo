@@ -2,6 +2,7 @@ import { ChefHat } from "lucide-react";
 
 import type { Recipe } from "~/lib/recipe-api";
 import { getRecipeDisplayPhotos } from "~/lib/recipe-photos";
+import { RecipeMarkdown } from "./recipe-markdown";
 import { RecipePhotoViewer } from "./recipe-photo-viewer";
 
 export type RecipeViewerProps = {
@@ -92,9 +93,9 @@ export function RecipeViewer({ recipe }: RecipeViewerProps) {
             ) : null}
           </p>
           {recipe.description.trim() !== "" ? (
-            <p className="mt-4 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
+            <RecipeMarkdown className="mt-4 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
               {recipe.description}
-            </p>
+            </RecipeMarkdown>
           ) : null}
         </header>
 
