@@ -55,8 +55,9 @@ spec:
   volumeClaimTemplates:
     - metadata:
         name: data
+        # Stable labels only — volumeClaimTemplates are immutable; do not use recipes.labels (chart version changes).
         labels:
-          {{- include "recipes.labels" . | nindent 10 }}
+          {{- include "recipes.selectorLabels" . | nindent 10 }}
           app.kubernetes.io/component: postgres
       spec:
         accessModes:
