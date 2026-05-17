@@ -12,10 +12,16 @@ tasks:
       - npm run build
 
   build:image:web:
-    desc: Build the React Router web image ({{.IMAGE_WEB}}:{{.TAG}})
+    desc: Build the React Router web image ({{.IMAGE_WEB}}:{{.TAG}}; release adds :{{.VERSION}} and :latest)
     dir: "{{.ROOT_DIR}}"
     cmds:
-      - docker build -t {{.IMAGE_WEB}}:{{.TAG}} -f web/Dockerfile web
+      - |
+        set -e
+        tags=(-t "{{.IMAGE_WEB}}:{{.TAG}}")
+        if [ -n "${RELEASE_VERSION:-}" ]; then
+          tags+=(-t "{{.IMAGE_WEB}}:${RELEASE_VERSION}" -t "{{.IMAGE_WEB}}:latest")
+        fi
+        docker build "${tags[@]}" -f web/Dockerfile web
 
   test:web:
     desc: vitest in web/

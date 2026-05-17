@@ -1,4 +1,4 @@
-# Images match `task build:images` / devspace (${DOCKER_USER}/recipes-*).
+# Images match `task build:images` / devspace. Release: `task release:images` (tags chart version + latest).
 nameOverride: ""
 fullnameOverride: ""
 

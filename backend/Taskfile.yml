@@ -12,10 +12,16 @@ tasks:
       - CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o api/recipes-api ./api
 
   build:image:api:
-    desc: Build the Go API image ({{.IMAGE_API}}:{{.TAG}})
+    desc: Build the Go API image ({{.IMAGE_API}}:{{.TAG}}; release adds :{{.VERSION}} and :latest)
     dir: "{{.ROOT_DIR}}"
     cmds:
-      - docker build -t {{.IMAGE_API}}:{{.TAG}} -f backend/Dockerfile backend
+      - |
+        set -e
+        tags=(-t "{{.IMAGE_API}}:{{.TAG}}")
+        if [ -n "${RELEASE_VERSION:-}" ]; then
+          tags+=(-t "{{.IMAGE_API}}:${RELEASE_VERSION}" -t "{{.IMAGE_API}}:latest")
+        fi
+        docker build "${tags[@]}" -f backend/Dockerfile backend
 
   test:backend:
     desc: go test for all workspace modules

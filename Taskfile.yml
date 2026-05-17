@@ -7,6 +7,8 @@ vars:
   IMAGE_API: "{{.DOCKER_USER}}/recipes-api"
   IMAGE_WEB: "{{.DOCKER_USER}}/recipes-web"
   TAG: latest
+  VERSION:
+    sh: '[ -n "$VERSION" ] && printf %s "$VERSION" || helm show chart helm | awk "/^version:/ {print \$2}"'
 
 includes:
   db:
@@ -42,12 +44,29 @@ tasks:
     deps: [build:image:db, build:image:api, build:image:web]
 
   push:images:
-    desc: Push all images to Docker Hub ({{.DOCKER_USER}}/recipes-*:{{.TAG}})
+    desc: Push all images ({{.TAG}} only — use release:images for version + latest)
     deps: [build:images]
     cmds:
       - docker push {{.IMAGE_DB}}:{{.TAG}}
       - docker push {{.IMAGE_API}}:{{.TAG}}
       - docker push {{.IMAGE_WEB}}:{{.TAG}}
+
+  release:images:
+    desc: Build and push all images tagged {{.VERSION}} and latest (version from helm/Chart.yaml)
+    deps: [build:images:release]
+    cmds:
+      - docker push {{.IMAGE_DB}}:{{.VERSION}}
+      - docker push {{.IMAGE_DB}}:latest
+      - docker push {{.IMAGE_API}}:{{.VERSION}}
+      - docker push {{.IMAGE_API}}:latest
+      - docker push {{.IMAGE_WEB}}:{{.VERSION}}
+      - docker push {{.IMAGE_WEB}}:latest
+
+  build:images:release:
+    desc: Build all images with {{.VERSION}} and latest tags
+    env:
+      RELEASE_VERSION: "{{.VERSION}}"
+    deps: [build:image:db, build:image:api, build:image:web]
 
   test:
     desc: Run web and backend tests
