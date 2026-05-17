@@ -34,7 +34,7 @@ COPY backend/types/ backend/types/
 
 ENV CGO_ENABLED=0 GOOS=linux
 WORKDIR /src/agent
-RUN go build -trimpath -ldflags="-s -w" -o /out/recipes-agent .
+RUN go build -trimpath -ldflags="-s -w" -o /out/recipes-agent ./cmd/recipes-agent
 WORKDIR /src/backend
 RUN go build -trimpath -ldflags="-s -w" -o /out/recipes-cli ./cli
 

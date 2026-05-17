@@ -7,25 +7,29 @@ import (
 	"os"
 
 	"google.golang.org/adk/agent"
+
+	"juancavallotti.com/recipes-agent/internal/config"
+	"juancavallotti.com/recipes-agent/internal/copilot"
+	"juancavallotti.com/recipes-agent/internal/server"
 )
 
 func main() {
 	log.SetOutput(os.Stdout)
 	log.SetFlags(log.LstdFlags | log.LUTC | log.Lmicroseconds)
 
-	loadDotenv()
-	cfg := readConfig()
+	config.LoadDotenv()
+	cfg := config.Read()
 	if cfg.GeminiAPIKey == "" {
 		log.Fatal("GEMINI_API_KEY is required")
 	}
 
 	ctx := context.Background()
-	copilot, err := newRecipeCopilot(ctx, cfg)
+	copilot, err := copilot.New(ctx, cfg)
 	if err != nil {
 		log.Fatalf("agent: %v", err)
 	}
 
-	handler, err := newHTTPHandler(agent.NewSingleLoader(copilot), cfg)
+	handler, err := server.NewHTTPHandler(agent.NewSingleLoader(copilot), cfg)
 	if err != nil {
 		log.Fatalf("server: %v", err)
 	}

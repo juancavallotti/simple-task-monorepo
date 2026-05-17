@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"bytes"
@@ -13,9 +13,12 @@ import (
 	"google.golang.org/adk/memory"
 	"google.golang.org/adk/server/adkrest"
 	"google.golang.org/adk/session"
+
+	"juancavallotti.com/recipes-agent/internal/config"
+	"juancavallotti.com/recipes-agent/internal/tools/recipescli"
 )
 
-func newHTTPHandler(loader agent.Loader, cfg config) (http.Handler, error) {
+func NewHTTPHandler(loader agent.Loader, cfg config.Config) (http.Handler, error) {
 	restServer, err := adkrest.NewServer(adkrest.ServerConfig{
 		AgentLoader:     loader,
 		SessionService:  session.InMemoryService(),
@@ -127,7 +130,7 @@ func liveness(w http.ResponseWriter, _ *http.Request) {
 	_, _ = w.Write([]byte(`{"status":"ok"}`))
 }
 
-func readiness(cfg config) http.HandlerFunc {
+func readiness(cfg config.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if cfg.GeminiAPIKey == "" {
@@ -135,7 +138,7 @@ func readiness(cfg config) http.HandlerFunc {
 			_, _ = w.Write([]byte(`{"status":"unready","reason":"missing GEMINI_API_KEY"}`))
 			return
 		}
-		if _, err := exec.LookPath(recipesCLIBinary); err != nil {
+		if _, err := exec.LookPath(recipescli.Binary); err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			_, _ = w.Write([]byte(`{"status":"unready","reason":"recipes-cli not found"}`))
 			return

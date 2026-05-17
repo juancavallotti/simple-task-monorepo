@@ -9,7 +9,7 @@ tasks:
   build:agent:
     desc: Build the agent binary with Go (writes agent/recipes-agent)
     cmds:
-      - CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o recipes-agent .
+      - CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o recipes-agent ./cmd/recipes-agent
 
   build:image:agent:
     desc: Build the Go agent image ({{.IMAGE_AGENT}}:{{.TAG}}; release adds :{{.VERSION}} and :latest)

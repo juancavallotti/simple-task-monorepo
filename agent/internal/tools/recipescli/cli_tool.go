@@ -1,4 +1,4 @@
-package main
+package recipescli
 
 import (
 	"bytes"
@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	recipesCLIBinary    = "recipes-cli"
+	Binary              = "recipes-cli"
 	defaultCLITimeout   = 15 * time.Second
 	maxCLITimeout       = 30 * time.Second
 	maxCLIOutputBytes   = 64 * 1024
@@ -39,7 +39,7 @@ type callRecipesCLIResult struct {
 	Successful bool   `json:"successful"`
 }
 
-func newRecipesCLITool() (tool.Tool, error) {
+func NewTool() (tool.Tool, error) {
 	return functiontool.New(functiontool.Config{
 		Name:        "call_recipes_cli",
 		Description: "Runs the installed recipes-cli binary with explicit arguments. Use it for recipe list, export, create, patch, delete, add-photo, import, and schema operations. For generated photos, pass the returned filePath directly to add-photo; never put generated photo data in stdin.",
@@ -63,7 +63,7 @@ func runRecipesCLIWithOutputLimit(ctx context.Context, input callRecipesCLIArgs,
 	runCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	cmd := exec.CommandContext(runCtx, recipesCLIBinary, input.Args...)
+	cmd := exec.CommandContext(runCtx, Binary, input.Args...)
 	log.Printf("tool call_recipes_cli: start args=%q timeout=%s stdin_bytes=%d", input.Args, timeout, len(input.Stdin))
 	if input.Stdin != "" {
 		cmd.Stdin = strings.NewReader(input.Stdin)
@@ -79,7 +79,7 @@ func runRecipesCLIWithOutputLimit(ctx context.Context, input callRecipesCLIArgs,
 	err := cmd.Run()
 	duration := time.Since(start)
 	result := callRecipesCLIResult{
-		Command:  strings.Join(append([]string{recipesCLIBinary}, input.Args...), " "),
+		Command:  strings.Join(append([]string{Binary}, input.Args...), " "),
 		ExitCode: exitCode(err),
 		Stdout:   stdout.String(),
 		Stderr:   stderr.String(),
@@ -89,7 +89,7 @@ func runRecipesCLIWithOutputLimit(ctx context.Context, input callRecipesCLIArgs,
 	log.Printf("tool call_recipes_cli: done args=%q exit_code=%d success=%t timed_out=%t stdout_bytes=%d stderr_bytes=%d duration=%s", input.Args, result.ExitCode, result.Successful, result.TimedOut, stdout.buf.Len(), stderr.buf.Len(), duration.Round(time.Millisecond))
 
 	if err != nil && result.ExitCode == -1 && !result.TimedOut {
-		return result, fmt.Errorf("run %s: %w", recipesCLIBinary, err)
+		return result, fmt.Errorf("run %s: %w", Binary, err)
 	}
 	return result, nil
 }

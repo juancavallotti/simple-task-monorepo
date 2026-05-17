@@ -1,4 +1,4 @@
-package main
+package imagegen
 
 import (
 	"context"
@@ -8,29 +8,29 @@ import (
 	"google.golang.org/genai"
 )
 
-type recipeImageGenerator interface {
+type RecipeImageGenerator interface {
 	GenerateRecipeImage(ctx context.Context, prompt string) ([]byte, error)
 }
 
-type geminiRecipeImageGenerator struct {
+type GeminiRecipeImageGenerator struct {
 	client *genai.Client
 	model  string
 }
 
-func newGeminiRecipeImageGenerator(ctx context.Context, cfg config) (*geminiRecipeImageGenerator, error) {
+func NewGeminiRecipeImageGenerator(ctx context.Context, apiKey string, model string) (*GeminiRecipeImageGenerator, error) {
 	client, err := genai.NewClient(ctx, &genai.ClientConfig{
-		APIKey: cfg.GeminiAPIKey,
+		APIKey: apiKey,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create genai client: %w", err)
 	}
-	return &geminiRecipeImageGenerator{
+	return &GeminiRecipeImageGenerator{
 		client: client,
-		model:  cfg.ImageModel,
+		model:  model,
 	}, nil
 }
 
-func (g *geminiRecipeImageGenerator) GenerateRecipeImage(ctx context.Context, prompt string) ([]byte, error) {
+func (g *GeminiRecipeImageGenerator) GenerateRecipeImage(ctx context.Context, prompt string) ([]byte, error) {
 	if g == nil || g.client == nil {
 		return nil, errors.New("image generator is not configured")
 	}

@@ -1,14 +1,18 @@
-package main
+package instruction
 
 import (
 	"strings"
 	"testing"
+
+	"juancavallotti.com/recipes-agent/internal/config"
 )
 
 func TestLoadInstructionFromAgentWorkingDirectory(t *testing.T) {
-	instruction, err := loadInstruction(defaultInstructionPath)
+	t.Chdir("../..")
+
+	instruction, err := Load(config.DefaultInstructionPath)
 	if err != nil {
-		t.Fatalf("loadInstruction() error = %v", err)
+		t.Fatalf("Load() error = %v", err)
 	}
 	if !strings.Contains(instruction, "You are a copilot for the recipe application.") {
 		t.Fatalf("instruction missing expected content: %q", instruction)
@@ -16,11 +20,11 @@ func TestLoadInstructionFromAgentWorkingDirectory(t *testing.T) {
 }
 
 func TestLoadInstructionFromRepoRootWorkingDirectory(t *testing.T) {
-	t.Chdir("..")
+	t.Chdir("../../..")
 
-	instruction, err := loadInstruction(defaultInstructionPath)
+	instruction, err := Load(config.DefaultInstructionPath)
 	if err != nil {
-		t.Fatalf("loadInstruction() error = %v", err)
+		t.Fatalf("Load() error = %v", err)
 	}
 	if !strings.Contains(instruction, "generate_recipe_photos") {
 		t.Fatalf("instruction missing expected tool guidance: %q", instruction)

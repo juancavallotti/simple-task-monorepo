@@ -1,4 +1,4 @@
-package main
+package recipephotos
 
 import (
 	"context"
@@ -14,11 +14,14 @@ import (
 
 	"google.golang.org/adk/tool"
 	"google.golang.org/adk/tool/functiontool"
+
+	"juancavallotti.com/recipes-agent/internal/imagegen"
+	"juancavallotti.com/recipes-agent/internal/limits"
 )
 
 const (
 	defaultGeneratedRecipePhotoCount = 1
-	maxGeneratedRecipePhotoCount     = 4
+	defaultImageOutputDir            = "/tmp/recipe-agent-images"
 	imageGenerationTimeout           = 45 * time.Second
 	generatedPhotoTTL                = time.Hour
 	generatedPhotoPrefix             = "recipe-photo-"
@@ -47,7 +50,7 @@ type generateRecipePhotosResult struct {
 	Capped          bool                   `json:"capped,omitempty"`
 }
 
-func newGenerateRecipePhotosTool(generator recipeImageGenerator, concurrency int, outputDir string) (tool.Tool, error) {
+func NewTool(generator imagegen.RecipeImageGenerator, concurrency int, outputDir string) (tool.Tool, error) {
 	concurrency = normalizedImageGenerationConcurrency(concurrency)
 	generate := func(ctx tool.Context, input generateRecipePhotosArgs) (generateRecipePhotosResult, error) {
 		return generateRecipePhotos(ctx, generator, input, concurrency, outputDir)
@@ -59,11 +62,11 @@ func newGenerateRecipePhotosTool(generator recipeImageGenerator, concurrency int
 	}, generate)
 }
 
-func generateRecipePhotos(ctx context.Context, generator recipeImageGenerator, input generateRecipePhotosArgs, concurrency int, outputDir string) (generateRecipePhotosResult, error) {
+func generateRecipePhotos(ctx context.Context, generator imagegen.RecipeImageGenerator, input generateRecipePhotosArgs, concurrency int, outputDir string) (generateRecipePhotosResult, error) {
 	start := time.Now()
 	result := generateRecipePhotosResult{
 		PhotosRequested: normalizedRecipePhotoCount(input.Count),
-		Capped:          input.Count > maxGeneratedRecipePhotoCount,
+		Capped:          input.Count > limits.MaxGeneratedRecipePhotoCount,
 	}
 	if strings.TrimSpace(input.Name) == "" {
 		return result, fmt.Errorf("name is required")
@@ -118,7 +121,7 @@ type generatedRecipePhotoAttempt struct {
 	err       error
 }
 
-func generateRecipePhotosParallel(ctx context.Context, generator recipeImageGenerator, prompts []string, concurrency int) []generatedRecipePhotoAttempt {
+func generateRecipePhotosParallel(ctx context.Context, generator imagegen.RecipeImageGenerator, prompts []string, concurrency int) []generatedRecipePhotoAttempt {
 	concurrency = normalizedImageGenerationConcurrency(concurrency)
 	results := make([]generatedRecipePhotoAttempt, len(prompts))
 	sem := make(chan struct{}, concurrency)
@@ -190,10 +193,10 @@ func cleanupGeneratedRecipePhotos(outputDir string, ttl time.Duration) {
 
 func normalizedImageGenerationConcurrency(concurrency int) int {
 	if concurrency < 1 {
-		return defaultImageGenerationConcurrency
+		return limits.DefaultImageGenerationConcurrency
 	}
-	if concurrency > maxGeneratedRecipePhotoCount {
-		return maxGeneratedRecipePhotoCount
+	if concurrency > limits.MaxGeneratedRecipePhotoCount {
+		return limits.MaxGeneratedRecipePhotoCount
 	}
 	return concurrency
 }
@@ -202,8 +205,8 @@ func normalizedRecipePhotoCount(count int) int {
 	if count <= 0 {
 		return defaultGeneratedRecipePhotoCount
 	}
-	if count > maxGeneratedRecipePhotoCount {
-		return maxGeneratedRecipePhotoCount
+	if count > limits.MaxGeneratedRecipePhotoCount {
+		return limits.MaxGeneratedRecipePhotoCount
 	}
 	return count
 }

@@ -1,4 +1,4 @@
-package main
+package copilot
 
 import (
 	"context"
@@ -9,11 +9,17 @@ import (
 	"google.golang.org/adk/model/gemini"
 	adktool "google.golang.org/adk/tool"
 	"google.golang.org/genai"
+
+	"juancavallotti.com/recipes-agent/internal/config"
+	"juancavallotti.com/recipes-agent/internal/imagegen"
+	"juancavallotti.com/recipes-agent/internal/instruction"
+	"juancavallotti.com/recipes-agent/internal/tools/recipephotos"
+	"juancavallotti.com/recipes-agent/internal/tools/recipescli"
 )
 
 const agentName = "recipe_copilot"
 
-func newRecipeCopilot(ctx context.Context, cfg config) (agent.Agent, error) {
+func New(ctx context.Context, cfg config.Config) (agent.Agent, error) {
 	model, err := gemini.NewModel(ctx, cfg.Model, &genai.ClientConfig{
 		APIKey: cfg.GeminiAPIKey,
 	})
@@ -21,19 +27,19 @@ func newRecipeCopilot(ctx context.Context, cfg config) (agent.Agent, error) {
 		return nil, fmt.Errorf("create gemini model: %w", err)
 	}
 
-	cliTool, err := newRecipesCLITool()
+	cliTool, err := recipescli.NewTool()
 	if err != nil {
 		return nil, fmt.Errorf("create recipes cli tool: %w", err)
 	}
-	imageGenerator, err := newGeminiRecipeImageGenerator(ctx, cfg)
+	imageGenerator, err := imagegen.NewGeminiRecipeImageGenerator(ctx, cfg.GeminiAPIKey, cfg.ImageModel)
 	if err != nil {
 		return nil, fmt.Errorf("create recipe image generator: %w", err)
 	}
-	photoTool, err := newGenerateRecipePhotosTool(imageGenerator, cfg.ImageGenerationConcurrency, cfg.ImageOutputDir)
+	photoTool, err := recipephotos.NewTool(imageGenerator, cfg.ImageGenerationConcurrency, cfg.ImageOutputDir)
 	if err != nil {
 		return nil, fmt.Errorf("create recipe photo tool: %w", err)
 	}
-	instruction, err := loadInstruction(cfg.InstructionPath)
+	instruction, err := instruction.Load(cfg.InstructionPath)
 	if err != nil {
 		return nil, fmt.Errorf("load instruction: %w", err)
 	}

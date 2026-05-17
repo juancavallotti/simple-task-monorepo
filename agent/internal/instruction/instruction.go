@@ -1,4 +1,4 @@
-package main
+package instruction
 
 import (
 	"errors"
@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 )
 
-func loadInstruction(path string) (string, error) {
+func Load(path string) (string, error) {
 	data, err := os.ReadFile(path)
 	if err == nil {
 		return string(data), nil
