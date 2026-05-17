@@ -8,10 +8,17 @@ export type Recipe = {
   description: string;
   category: string;
   image: string;
+  photos?: RecipePhoto[];
   ingredients: string[];
   instructions: string[];
   created_at: string;
   updated_at: string;
+};
+
+export type RecipePhoto = {
+  id?: string;
+  image_base64: string;
+  featured: boolean;
 };
 
 export type CreateRecipeBody = {

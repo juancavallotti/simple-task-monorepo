@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Link, useFetcher } from "react-router";
 
 import type { Recipe } from "~/lib/recipe-api";
+import { getRecipePrimaryPhoto } from "~/lib/recipe-photos";
 
 type DeleteRecipeActionResult =
   | { ok: true }
@@ -79,6 +80,7 @@ export function RecipeList({
         {recipes.map((recipe) => {
           const isConfirming = confirmingId === recipe.id;
           const isDeleting = deletingId === recipe.id;
+          const primaryPhoto = getRecipePrimaryPhoto(recipe);
 
           return (
             <li
@@ -90,9 +92,9 @@ export function RecipeList({
                 className="flex min-w-0 flex-1 gap-4 p-4 outline-none transition-colors hover:bg-zinc-50/80 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-zinc-400 dark:hover:bg-zinc-800/50 dark:focus-visible:ring-zinc-500"
               >
                 <div className="size-20 shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
-                  {recipe.image.trim() !== "" ? (
+                  {primaryPhoto != null ? (
                     <img
-                      src={recipe.image}
+                      src={primaryPhoto.src}
                       alt=""
                       className="size-full object-cover"
                     />
