@@ -62,6 +62,9 @@ VALUES ($1::uuid, $2, $3, $4, $5)`,
 	if err := s.insertIngredientsAndSteps(ctx, tx, id, recipe); err != nil {
 		return "", err
 	}
+	if err := s.replaceRecipePhotos(ctx, tx, id, recipe.Photos); err != nil {
+		return "", err
+	}
 	if err := tx.Commit(); err != nil {
 		return "", err
 	}

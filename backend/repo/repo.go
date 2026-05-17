@@ -38,6 +38,10 @@ func (r *Repo) UpdateRecipe(ctx context.Context, recipe types.Recipe) error {
 	return r.service.UpdateRecipe(ctx, recipe)
 }
 
+func (r *Repo) AddRecipePhoto(ctx context.Context, recipeID string, photo types.Photo) (string, error) {
+	return r.service.AddRecipePhoto(ctx, recipeID, photo)
+}
+
 func (r *Repo) DeleteRecipe(ctx context.Context, id string) error {
 	return r.service.DeleteRecipe(ctx, id)
 }

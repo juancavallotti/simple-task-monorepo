@@ -16,6 +16,7 @@ type fakeStore struct {
 	createCalls       int
 	createWithIDCalls int
 	updateCalls       int
+	addPhotoCalls     int
 	deleteCalls       int
 
 	createErr         error
@@ -51,6 +52,11 @@ func (f *fakeStore) CreateRecipeWithID(ctx context.Context, recipe types.Recipe)
 func (f *fakeStore) UpdateRecipe(ctx context.Context, recipe types.Recipe) error {
 	f.updateCalls++
 	return nil
+}
+
+func (f *fakeStore) AddRecipePhoto(ctx context.Context, recipeID string, photo types.Photo) (string, error) {
+	f.addPhotoCalls++
+	return "photo-id", nil
 }
 
 func (f *fakeStore) DeleteRecipe(ctx context.Context, id string) error {
@@ -148,6 +154,35 @@ func TestService_DeleteRecipe_ValidationShortCircuit(t *testing.T) {
 	}
 	if f.deleteCalls != 0 {
 		t.Fatalf("store should not be called")
+	}
+}
+
+func TestService_AddRecipePhoto_ValidatesBase64(t *testing.T) {
+	t.Parallel()
+	f := &fakeStore{}
+	s := &Service{store: f}
+	_, err := s.AddRecipePhoto(context.Background(), testUUID, types.Photo{ImageBase64: "not base64"})
+	if !errors.Is(err, ErrInvalidRecipe) {
+		t.Fatalf("err = %v, want ErrInvalidRecipe", err)
+	}
+	if f.addPhotoCalls != 0 {
+		t.Fatalf("store should not be called")
+	}
+}
+
+func TestService_AddRecipePhoto_DelegatesToStore(t *testing.T) {
+	t.Parallel()
+	f := &fakeStore{}
+	s := &Service{store: f}
+	id, err := s.AddRecipePhoto(context.Background(), testUUID, types.Photo{ImageBase64: "aW1n", Featured: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if id != "photo-id" {
+		t.Fatalf("id = %q, want photo-id", id)
+	}
+	if f.addPhotoCalls != 1 {
+		t.Fatalf("addPhotoCalls = %d", f.addPhotoCalls)
 	}
 }
 

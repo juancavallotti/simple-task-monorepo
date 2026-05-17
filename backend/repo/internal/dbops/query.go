@@ -36,6 +36,7 @@ ORDER BY created_at DESC`)
 		}
 		r.Ingredients = []string{}
 		r.Instructions = []string{}
+		r.Photos = []types.Photo{}
 		out = append(out, r)
 	}
 	return out, rows.Err()
@@ -109,6 +110,11 @@ SELECT instruction FROM steps WHERE recipe_id = $1::uuid ORDER BY sort_order`, i
 		r.Instructions = append(r.Instructions, inst)
 	}
 	if err := stepRows.Err(); err != nil {
+		return types.Recipe{}, err
+	}
+
+	r.Photos, err = s.loadRecipePhotos(ctx, id)
+	if err != nil {
 		return types.Recipe{}, err
 	}
 

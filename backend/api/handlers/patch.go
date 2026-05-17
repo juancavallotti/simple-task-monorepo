@@ -9,17 +9,18 @@ import (
 
 // recipePatch is a partial update payload. Omitted JSON fields are nil and left unchanged.
 type recipePatch struct {
-	Name         *string   `json:"name"`
-	Description  *string   `json:"description"`
-	Category     *string   `json:"category"`
-	Image        *string   `json:"image"`
-	Ingredients  *[]string `json:"ingredients"`
-	Instructions *[]string `json:"instructions"`
+	Name         *string        `json:"name"`
+	Description  *string        `json:"description"`
+	Category     *string        `json:"category"`
+	Image        *string        `json:"image"`
+	Ingredients  *[]string      `json:"ingredients"`
+	Instructions *[]string      `json:"instructions"`
+	Photos       *[]types.Photo `json:"photos"`
 }
 
 func (p recipePatch) anySet() bool {
 	return p.Name != nil || p.Description != nil || p.Category != nil || p.Image != nil ||
-		p.Ingredients != nil || p.Instructions != nil
+		p.Ingredients != nil || p.Instructions != nil || p.Photos != nil
 }
 
 func mergeRecipePatch(cur types.Recipe, p recipePatch) types.Recipe {
@@ -41,6 +42,9 @@ func mergeRecipePatch(cur types.Recipe, p recipePatch) types.Recipe {
 	}
 	if p.Instructions != nil {
 		out.Instructions = *p.Instructions
+	}
+	if p.Photos != nil {
+		out.Photos = *p.Photos
 	}
 	return out
 }

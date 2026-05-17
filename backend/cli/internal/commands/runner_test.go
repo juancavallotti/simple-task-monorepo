@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"os"
 	"strings"
 	"testing"
 
@@ -21,6 +22,9 @@ type fakeRepo struct {
 
 	updateRecipeCalls int
 	updatedRecipe     types.Recipe
+
+	addPhotoCalls int
+	addedPhoto    types.Photo
 
 	importedRecipes []types.Recipe
 }
@@ -56,6 +60,15 @@ func (f *fakeRepo) UpdateRecipe(ctx context.Context, recipe types.Recipe) error 
 	f.updateRecipeCalls++
 	f.updatedRecipe = recipe
 	return nil
+}
+
+func (f *fakeRepo) AddRecipePhoto(ctx context.Context, recipeID string, photo types.Photo) (string, error) {
+	f.addPhotoCalls++
+	f.addedPhoto = photo
+	if f.updatedRecipe.ID == "" {
+		f.updatedRecipe = types.Recipe{ID: recipeID, Name: "with-photo", Photos: []types.Photo{photo}}
+	}
+	return "photo-id", nil
 }
 
 func (f *fakeRepo) ImportRecipe(ctx context.Context, recipe types.Recipe) error {
@@ -230,6 +243,33 @@ func TestRun_PatchRejectsEmptyPatch(t *testing.T) {
 	}
 	if repo.updateRecipeCalls != 0 {
 		t.Fatalf("update calls = %d, want 0", repo.updateRecipeCalls)
+	}
+}
+
+func TestRun_AddPhotoReadsFileAndPrintsUpdatedRecipe(t *testing.T) {
+	repo := &fakeRepo{}
+	var factoryCalls int
+	tmp := t.TempDir() + "/photo.bin"
+	if err := os.WriteFile(tmp, []byte("img"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	r, stdout, _ := testRunner("", repo, &factoryCalls)
+
+	if err := r.Run(context.Background(), []string{"add-photo", " recipe-1 ", tmp, "--featured"}); err != nil {
+		t.Fatalf("Run add-photo: %v", err)
+	}
+	if repo.addPhotoCalls != 1 {
+		t.Fatalf("add photo calls = %d, want 1", repo.addPhotoCalls)
+	}
+	if repo.addedPhoto.ImageBase64 != "aW1n" || !repo.addedPhoto.Featured {
+		t.Fatalf("added photo = %#v", repo.addedPhoto)
+	}
+	var out types.Recipe
+	if err := json.Unmarshal(stdout.Bytes(), &out); err != nil {
+		t.Fatalf("output is not recipe JSON: %v\n%s", err, stdout.String())
+	}
+	if out.ID != "recipe-1" || len(out.Photos) != 1 {
+		t.Fatalf("output recipe = %#v", out)
 	}
 }
 

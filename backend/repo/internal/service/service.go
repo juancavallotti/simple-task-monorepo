@@ -15,6 +15,7 @@ type recipeStore interface {
 	CreateRecipe(ctx context.Context, recipe types.Recipe) (string, error)
 	CreateRecipeWithID(ctx context.Context, recipe types.Recipe) error
 	UpdateRecipe(ctx context.Context, recipe types.Recipe) error
+	AddRecipePhoto(ctx context.Context, recipeID string, photo types.Photo) (string, error)
 	DeleteRecipe(ctx context.Context, id string) error
 }
 

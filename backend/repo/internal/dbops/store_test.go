@@ -36,6 +36,9 @@ func TestStore_nilDB_errors(t *testing.T) {
 	if err := s.UpdateRecipe(ctx, types.Recipe{ID: "550e8400-e29b-41d4-a716-446655440000"}); !errors.Is(err, errNilDB) {
 		t.Fatalf("UpdateRecipe err = %v", err)
 	}
+	if _, err := s.AddRecipePhoto(ctx, "550e8400-e29b-41d4-a716-446655440000", types.Photo{}); !errors.Is(err, errNilDB) {
+		t.Fatalf("AddRecipePhoto err = %v", err)
+	}
 	if err := s.DeleteRecipe(ctx, "550e8400-e29b-41d4-a716-446655440000"); !errors.Is(err, errNilDB) {
 		t.Fatalf("DeleteRecipe err = %v", err)
 	}
@@ -157,6 +160,12 @@ func TestStore_GetRecipe_success(t *testing.T) {
 		WithArgs(rid).
 		WillReturnRows(st)
 
+	photos := sqlmock.NewRows([]string{"id", "image_base64", "is_featured"}).
+		AddRow("650e8400-e29b-41d4-a716-446655440000", "aW1n", true)
+	mock.ExpectQuery("FROM recipes_images").
+		WithArgs(rid).
+		WillReturnRows(photos)
+
 	got, err := s.GetRecipe(context.Background(), rid)
 	if err != nil {
 		t.Fatal(err)
@@ -166,6 +175,9 @@ func TestStore_GetRecipe_success(t *testing.T) {
 	}
 	if len(got.Ingredients) != 1 || len(got.Instructions) != 1 {
 		t.Fatalf("ingredients=%v instructions=%v", got.Ingredients, got.Instructions)
+	}
+	if len(got.Photos) != 1 || !got.Photos[0].Featured || got.Photos[0].ImageBase64 != "aW1n" {
+		t.Fatalf("photos=%#v", got.Photos)
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Fatal(err)

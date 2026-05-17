@@ -17,6 +17,7 @@ type RecipeRepo interface {
 	GetRecipe(ctx context.Context, id string) (types.Recipe, error)
 	CreateRecipe(ctx context.Context, recipe types.Recipe) (string, error)
 	UpdateRecipe(ctx context.Context, recipe types.Recipe) error
+	AddRecipePhoto(ctx context.Context, recipeID string, photo types.Photo) (string, error)
 	ImportRecipe(ctx context.Context, recipe types.Recipe) error
 }
 
@@ -82,6 +83,14 @@ func (r Runner) Run(ctx context.Context, args []string) error {
 			return r.usageError("usage: recipes-cli patch <id> <path>")
 		}
 		return r.cmdPatch(ctx, repo, args[1], args[2])
+	case "add-photo":
+		if len(args) != 3 && len(args) != 4 {
+			return r.usageError("usage: recipes-cli add-photo <recipe-id> <image-path> [--featured]")
+		}
+		if len(args) == 4 && args[3] != "--featured" {
+			return r.usageError("usage: recipes-cli add-photo <recipe-id> <image-path> [--featured]")
+		}
+		return r.cmdAddPhoto(ctx, repo, args[1], args[2], len(args) == 4)
 	case "import":
 		if len(args) != 2 {
 			return r.usageError("usage: recipes-cli import <path>")
@@ -102,6 +111,8 @@ Commands:
   export-all                    Print all recipes as JSON Lines (one JSON object per line).
   create <path>                 Read one recipe JSON object (use "-" for stdin); create it.
   patch <id> <path>             Read one partial recipe JSON object (use "-" for stdin); patch it.
+  add-photo <id> <path> [--featured]
+                                Base64-encode an image file and attach it to a recipe.
   import <path>                 Read JSONL from file (use "-" for stdin); upsert each recipe.
   schema                        Print the JSON Schema for create and patch payloads.
 

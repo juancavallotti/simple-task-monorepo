@@ -51,9 +51,29 @@ CREATE TABLE IF NOT EXISTS steps (
     CONSTRAINT steps_recipe_order_unique UNIQUE (recipe_id, sort_order)
 );
 
+CREATE TABLE IF NOT EXISTS recipe_images (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    image_base64 TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT recipe_images_base64_nonempty CHECK (length(trim(image_base64)) > 0)
+);
+
+CREATE TABLE IF NOT EXISTS recipes_images (
+    recipe_id UUID NOT NULL REFERENCES recipes (id) ON DELETE CASCADE,
+    image_id UUID NOT NULL REFERENCES recipe_images (id) ON DELETE CASCADE,
+    is_featured BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (recipe_id, image_id)
+);
+
 CREATE INDEX IF NOT EXISTS recipes_ingredients_recipe_id_idx ON recipes_ingredients (recipe_id);
 CREATE INDEX IF NOT EXISTS recipes_ingredients_ingredient_id_idx ON recipes_ingredients (ingredient_id);
 CREATE INDEX IF NOT EXISTS steps_recipe_id_idx ON steps (recipe_id);
+CREATE INDEX IF NOT EXISTS recipes_images_recipe_id_idx ON recipes_images (recipe_id);
+CREATE INDEX IF NOT EXISTS recipes_images_image_id_idx ON recipes_images (image_id);
+CREATE UNIQUE INDEX IF NOT EXISTS recipes_images_one_featured_idx
+    ON recipes_images (recipe_id)
+    WHERE is_featured;
 
 CREATE OR REPLACE FUNCTION recipes_set_updated_at()
 RETURNS TRIGGER

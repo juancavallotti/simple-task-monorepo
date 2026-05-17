@@ -13,12 +13,13 @@ import (
 )
 
 type recipeInput struct {
-	Name         string   `json:"name"`
-	Description  string   `json:"description"`
-	Ingredients  []string `json:"ingredients"`
-	Instructions []string `json:"instructions"`
-	Category     string   `json:"category"`
-	Image        string   `json:"image"`
+	Name         string        `json:"name"`
+	Description  string        `json:"description"`
+	Ingredients  []string      `json:"ingredients"`
+	Instructions []string      `json:"instructions"`
+	Category     string        `json:"category"`
+	Image        string        `json:"image"`
+	Photos       []types.Photo `json:"photos"`
 }
 
 func (in recipeInput) recipe() types.Recipe {
@@ -29,6 +30,7 @@ func (in recipeInput) recipe() types.Recipe {
 		Instructions: in.Instructions,
 		Category:     in.Category,
 		Image:        in.Image,
+		Photos:       in.Photos,
 	}
 }
 
@@ -121,7 +123,7 @@ func (r Runner) cmdImport(ctx context.Context, repo RecipeRepo, path string) err
 
 	sc := bufio.NewScanner(in)
 	// Default buffer may be too small for long JSON lines.
-	const max = 16 * 1024 * 1024
+	const max = 64 * 1024 * 1024
 	buf := make([]byte, 0, 64*1024)
 	sc.Buffer(buf, max)
 

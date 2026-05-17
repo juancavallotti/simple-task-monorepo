@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"strings"
@@ -49,6 +50,28 @@ func validateRecipeContent(recipe types.Recipe) error {
 	}
 	if !hasNonEmptyEntry(recipe.Instructions) {
 		return fmt.Errorf("%w: at least one non-empty instruction is required", ErrInvalidRecipe)
+	}
+	if err := validatePhotos(recipe.Photos); err != nil {
+		return err
+	}
+	return nil
+}
+
+func validatePhotos(photos []types.Photo) error {
+	featured := 0
+	for i, photo := range photos {
+		if strings.TrimSpace(photo.ImageBase64) == "" {
+			return fmt.Errorf("%w: photo %d image_base64 is required", ErrInvalidRecipe, i+1)
+		}
+		if _, err := base64.StdEncoding.DecodeString(photo.ImageBase64); err != nil {
+			return fmt.Errorf("%w: photo %d image_base64 is not valid base64", ErrInvalidRecipe, i+1)
+		}
+		if photo.Featured {
+			featured++
+		}
+	}
+	if featured > 1 {
+		return fmt.Errorf("%w: at most one featured photo is allowed", ErrInvalidRecipe)
 	}
 	return nil
 }

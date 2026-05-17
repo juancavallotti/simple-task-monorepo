@@ -44,6 +44,9 @@ WHERE id = $1::uuid`,
 	if err := s.replaceIngredientsAndSteps(ctx, tx, id, recipe); err != nil {
 		return err
 	}
+	if err := s.replaceRecipePhotos(ctx, tx, id, recipe.Photos); err != nil {
+		return err
+	}
 	if err := tx.Commit(); err != nil {
 		return err
 	}
