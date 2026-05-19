@@ -2,6 +2,7 @@ import { BookOpen, ChefHat, CirclePlus } from "lucide-react";
 import { NavLink, Outlet } from "react-router";
 
 import { AgentChat } from "~/components/agent-chat";
+import { AgentPreferencesProvider } from "~/state/agent-preferences/context";
 
 import type { Route } from "./+types/app-layout";
 
@@ -28,6 +29,14 @@ function navIconClass(isActive: boolean) {
 }
 
 export default function AppLayout() {
+  return (
+    <AgentPreferencesProvider>
+      <AppLayoutContents />
+    </AgentPreferencesProvider>
+  );
+}
+
+function AppLayoutContents() {
   return (
     <div className="flex min-h-screen bg-zinc-100 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
       <aside className="flex w-56 shrink-0 flex-col border-r border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">

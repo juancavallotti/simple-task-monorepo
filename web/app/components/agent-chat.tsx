@@ -8,9 +8,57 @@ import {
   uniqueUIActions,
   type UIAction,
 } from "~/lib/agent-ui-actions";
+import { useAgentPreferencesState } from "~/state/agent-preferences/context";
+import {
+  AgentPreferencesActionType,
+  type ProvidersResponse,
+  type SavedPrefs,
+} from "~/state/agent-preferences/types";
 
 const agentAppName = "recipe_copilot";
 const sessionStorageKey = "recipes-agent-session-id";
+const modelPrefsStorageKey = "recipes-agent-model-prefs";
+
+function loadSavedPrefs(): SavedPrefs | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(modelPrefsStorageKey);
+    if (raw == null || raw === "") return null;
+    const parsed = JSON.parse(raw) as Partial<SavedPrefs>;
+    return {
+      agentModel: typeof parsed.agentModel === "string" ? parsed.agentModel : null,
+      imageModel: typeof parsed.imageModel === "string" ? parsed.imageModel : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function saveSavedPrefs(prefs: SavedPrefs) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(modelPrefsStorageKey, JSON.stringify(prefs));
+  } catch {
+    // ignore quota / disabled storage
+  }
+}
+
+function buildModelContext(prefs: {
+  options: ProvidersResponse | null;
+  agentModel: string | null;
+  imageModel: string | null;
+}): { agentModel: string; imageModel: string } | null {
+  if (prefs.options == null || prefs.agentModel == null || prefs.imageModel == null) {
+    return null;
+  }
+  if (
+    prefs.agentModel === prefs.options.defaultAgentModel &&
+    prefs.imageModel === prefs.options.defaultImageModel
+  ) {
+    return null;
+  }
+  return { agentModel: prefs.agentModel, imageModel: prefs.imageModel };
+}
 
 type ChatMessage = {
   id: string;
@@ -308,6 +356,41 @@ export function AgentChat() {
   const location = useLocation();
   const navigate = useNavigate();
   const revalidator = useRevalidator();
+  const { state: prefs, dispatch: prefsDispatch } = useAgentPreferencesState();
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${baseURL}/providers`);
+        if (!res.ok) throw new Error(`status ${res.status}`);
+        const options = (await res.json()) as ProvidersResponse;
+        if (cancelled) return;
+        prefsDispatch({
+          type: AgentPreferencesActionType.OPTIONS_LOADED,
+          data: { options, saved: loadSavedPrefs() },
+        });
+      } catch (err) {
+        if (cancelled) return;
+        prefsDispatch({
+          type: AgentPreferencesActionType.OPTIONS_FAILED,
+          data: err instanceof Error ? err.message : String(err),
+        });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [baseURL, prefsDispatch]);
+
+  useEffect(() => {
+    if (prefs.options == null) return;
+    if (prefs.agentModel == null && prefs.imageModel == null) return;
+    saveSavedPrefs({
+      agentModel: prefs.agentModel,
+      imageModel: prefs.imageModel,
+    });
+  }, [prefs.options, prefs.agentModel, prefs.imageModel]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -352,19 +435,25 @@ export function AgentChat() {
       const sessionID = getSessionID();
       await ensureSession(baseURL, userID, sessionID);
 
+      const body: Record<string, unknown> = {
+        appName: agentAppName,
+        userId: userID,
+        sessionId: sessionID,
+        streaming: true,
+        newMessage: {
+          role: "user",
+          parts: [{ text: buildAgentMessage(text, appContext) }],
+        },
+      };
+      const modelContext = buildModelContext(prefs);
+      if (modelContext != null) {
+        body.modelContext = modelContext;
+      }
+
       const res = await fetch(`${baseURL}/run_sse`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          appName: agentAppName,
-          userId: userID,
-          sessionId: sessionID,
-          streaming: true,
-          newMessage: {
-            role: "user",
-            parts: [{ text: buildAgentMessage(text, appContext) }],
-          },
-        }),
+        body: JSON.stringify(body),
       });
 
       if (!res.ok) {
