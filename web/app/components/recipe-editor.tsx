@@ -1,6 +1,7 @@
 import { Plus, Trash2 } from "lucide-react";
 import { useId } from "react";
 
+import { inputClass } from "~/lib/input-styles";
 import type { RecipeDraft } from "~/lib/recipe-draft";
 
 export type RecipeEditorProps = {
@@ -8,16 +9,6 @@ export type RecipeEditorProps = {
   onChange: (next: RecipeDraft) => void;
   disabled?: boolean;
 };
-
-function inputClass(disabled: boolean) {
-  return [
-    "w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm outline-none transition-colors",
-    "placeholder:text-zinc-400",
-    "focus:border-zinc-400 focus:ring-2 focus:ring-zinc-400/30",
-    "dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-500 dark:focus:ring-zinc-500/25",
-    disabled ? "cursor-not-allowed opacity-60" : "",
-  ].join(" ");
-}
 
 function labelClass() {
   return "text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400";

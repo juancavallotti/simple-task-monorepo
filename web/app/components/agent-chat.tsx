@@ -8,33 +8,19 @@ import {
   uniqueUIActions,
   type UIAction,
 } from "~/lib/agent-ui-actions";
+import { ModelDropdown } from "~/components/model-dropdown";
+import { getAgentBaseURL } from "~/lib/agent-base-url";
 import { useAgentPreferencesState } from "~/state/agent-preferences/context";
 import {
   AgentPreferencesActionType,
   type ProvidersResponse,
-  type SavedPrefs,
 } from "~/state/agent-preferences/types";
 
 const agentAppName = "recipe_copilot";
 const sessionStorageKey = "recipes-agent-session-id";
 const modelPrefsStorageKey = "recipes-agent-model-prefs";
 
-function loadSavedPrefs(): SavedPrefs | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem(modelPrefsStorageKey);
-    if (raw == null || raw === "") return null;
-    const parsed = JSON.parse(raw) as Partial<SavedPrefs>;
-    return {
-      agentModel: typeof parsed.agentModel === "string" ? parsed.agentModel : null,
-      imageModel: typeof parsed.imageModel === "string" ? parsed.imageModel : null,
-    };
-  } catch {
-    return null;
-  }
-}
-
-function saveSavedPrefs(prefs: SavedPrefs) {
+function saveSavedPrefs(prefs: { agentModel: string | null; imageModel: string | null }) {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(modelPrefsStorageKey, JSON.stringify(prefs));
@@ -106,17 +92,6 @@ function randomID(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-function normalizeBaseURL(raw: string): string {
-  return raw.replace(/\/+$/, "");
-}
-
-function getAgentBaseURL(): string {
-  const fromEnv = import.meta.env.VITE_AGENT_API_BASE_URL;
-  if (typeof fromEnv === "string" && fromEnv.trim() !== "") {
-    return normalizeBaseURL(fromEnv.trim());
-  }
-  return import.meta.env.DEV ? "http://localhost:4100/agent" : "/agent";
-}
 
 function getUserID(): string {
   const key = "recipes-agent-user-id";
@@ -359,31 +334,6 @@ export function AgentChat() {
   const { state: prefs, dispatch: prefsDispatch } = useAgentPreferencesState();
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch(`${baseURL}/providers`);
-        if (!res.ok) throw new Error(`status ${res.status}`);
-        const options = (await res.json()) as ProvidersResponse;
-        if (cancelled) return;
-        prefsDispatch({
-          type: AgentPreferencesActionType.OPTIONS_LOADED,
-          data: { options, saved: loadSavedPrefs() },
-        });
-      } catch (err) {
-        if (cancelled) return;
-        prefsDispatch({
-          type: AgentPreferencesActionType.OPTIONS_FAILED,
-          data: err instanceof Error ? err.message : String(err),
-        });
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [baseURL, prefsDispatch]);
-
-  useEffect(() => {
     if (prefs.options == null) return;
     if (prefs.agentModel == null && prefs.imageModel == null) return;
     saveSavedPrefs({
@@ -508,7 +458,7 @@ export function AgentChat() {
   return (
     <div className="fixed bottom-5 right-5 z-50">
       {isOpen ? (
-        <section className="flex h-[min(36rem,calc(100vh-2.5rem))] w-[min(24rem,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl dark:border-zinc-800 dark:bg-zinc-900">
+        <section className="flex h-[min(36rem,calc(100vh-2.5rem))] w-[min(28rem,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl dark:border-zinc-800 dark:bg-zinc-900">
           <header className="flex items-center justify-between border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
             <div className="flex items-center gap-2">
               <span className="flex size-8 items-center justify-center rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-200">
@@ -603,7 +553,7 @@ export function AgentChat() {
               void sendMessage();
             }}
           >
-            <div className="flex items-end gap-2">
+            <div className="flex flex-col gap-2">
               <textarea
                 ref={inputRef}
                 value={draft}
@@ -616,16 +566,55 @@ export function AgentChat() {
                 }}
                 rows={2}
                 placeholder="Ask the copilot..."
-                className="min-h-10 flex-1 resize-none rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-zinc-400 focus:ring-2 focus:ring-zinc-200 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-500 dark:focus:ring-zinc-800"
+                className="min-h-10 w-full resize-none rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-zinc-400 focus:ring-2 focus:ring-zinc-200 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-500 dark:focus:ring-zinc-800"
               />
-              <button
-                type="submit"
-                disabled={draft.trim() === "" || isSending}
-                className="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-600 text-white shadow-sm transition hover:bg-amber-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 dark:focus-visible:ring-offset-zinc-900"
-                aria-label="Send message"
-              >
-                <Send className="size-4" aria-hidden />
-              </button>
+              <div className="flex items-center gap-2">
+                {prefs.options != null &&
+                prefs.options.imageOptions.length > 1 ? (
+                  <ModelDropdown
+                    ariaLabel="Image model"
+                    options={prefs.options.imageOptions.map((opt) => ({
+                      id: opt.id,
+                      label: opt.model,
+                    }))}
+                    value={prefs.imageModel}
+                    disabled={isSending}
+                    onChange={(id) =>
+                      prefsDispatch({
+                        type: AgentPreferencesActionType.SELECT_IMAGE,
+                        data: id,
+                      })
+                    }
+                  />
+                ) : null}
+                {prefs.options != null &&
+                prefs.options.agentOptions.length > 1 ? (
+                  <ModelDropdown
+                    ariaLabel="Agent model"
+                    options={prefs.options.agentOptions.map((opt) => ({
+                      id: opt.id,
+                      label: opt.model,
+                    }))}
+                    value={prefs.agentModel}
+                    disabled={isSending}
+                    onChange={(id) =>
+                      prefsDispatch({
+                        type: AgentPreferencesActionType.SELECT_AGENT,
+                        data: id,
+                      })
+                    }
+                  />
+                ) : null}
+                <div className="flex-1" />
+                <button
+                  type="submit"
+                  disabled={draft.trim() === "" || isSending}
+                  className="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-600 text-white shadow-sm transition hover:bg-amber-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 dark:focus-visible:ring-offset-zinc-900"
+                  aria-label="Send message"
+                >
+                  <Send className="size-4" aria-hidden />
+                </button>
+              </div>
             </div>
           </form>
         </section>

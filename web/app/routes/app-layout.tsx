@@ -1,10 +1,40 @@
 import { BookOpen, ChefHat, CirclePlus } from "lucide-react";
-import { NavLink, Outlet } from "react-router";
+import { useEffect } from "react";
+import { NavLink, Outlet, useLoaderData } from "react-router";
 
 import { AgentChat } from "~/components/agent-chat";
-import { AgentPreferencesProvider } from "~/state/agent-preferences/context";
+import { getAgentBaseURL } from "~/lib/agent-base-url";
+import {
+  AgentPreferencesProvider,
+  useAgentPreferencesState,
+} from "~/state/agent-preferences/context";
+import {
+  AgentPreferencesActionType,
+  type ProvidersResponse,
+} from "~/state/agent-preferences/types";
 
 import type { Route } from "./+types/app-layout";
+
+// clientLoader: runs in the browser, so the fetch reaches the agent the
+// same way the chat does — bypasses the dev-container / SSR network gap.
+export async function clientLoader(_args: Route.ClientLoaderArgs) {
+  const baseURL = getAgentBaseURL();
+  try {
+    const res = await fetch(`${baseURL}/providers`);
+    if (!res.ok) {
+      throw new Error(`providers request failed (${res.status})`);
+    }
+    const options = (await res.json()) as ProvidersResponse;
+    return { options, loadError: null as string | null };
+  } catch (err) {
+    return {
+      options: null as ProvidersResponse | null,
+      loadError:
+        err instanceof Error ? err.message : "Could not load agent providers",
+    };
+  }
+}
+
 
 export function meta({}: Route.MetaArgs) {
   return [{ title: "Recipes" }];
@@ -28,6 +58,28 @@ function navIconClass(isActive: boolean) {
   ].join(" ");
 }
 
+const modelPrefsStorageKey = "recipes-agent-model-prefs";
+
+function loadSavedPrefs():
+  | { agentModel: string | null; imageModel: string | null }
+  | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(modelPrefsStorageKey);
+    if (raw == null || raw === "") return null;
+    const parsed = JSON.parse(raw) as Partial<{
+      agentModel: string;
+      imageModel: string;
+    }>;
+    return {
+      agentModel: typeof parsed.agentModel === "string" ? parsed.agentModel : null,
+      imageModel: typeof parsed.imageModel === "string" ? parsed.imageModel : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export default function AppLayout() {
   return (
     <AgentPreferencesProvider>
@@ -37,6 +89,25 @@ export default function AppLayout() {
 }
 
 function AppLayoutContents() {
+  const loaderData = useLoaderData<typeof clientLoader>();
+  const { dispatch } = useAgentPreferencesState();
+
+  useEffect(() => {
+    if (loaderData.loadError != null) {
+      dispatch({
+        type: AgentPreferencesActionType.OPTIONS_FAILED,
+        data: loaderData.loadError,
+      });
+      return;
+    }
+    if (loaderData.options != null) {
+      dispatch({
+        type: AgentPreferencesActionType.OPTIONS_LOADED,
+        data: { options: loaderData.options, saved: loadSavedPrefs() },
+      });
+    }
+  }, [loaderData, dispatch]);
+
   return (
     <div className="flex min-h-screen bg-zinc-100 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
       <aside className="flex w-56 shrink-0 flex-col border-r border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
