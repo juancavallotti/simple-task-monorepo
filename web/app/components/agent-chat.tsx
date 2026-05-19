@@ -25,8 +25,11 @@ import {
 } from "~/state/agent-preferences/types";
 
 const agentAppName = "recipe_copilot";
-const sessionStorageKey = "recipes-agent-session-id";
 const modelPrefsStorageKey = "recipes-agent-model-prefs";
+
+// Session ID lives in memory only — reloading the page generates a fresh
+// session so the agent does not carry over context from a prior visit.
+let currentSessionID: string | null = null;
 
 function saveSavedPrefs(prefs: { agentModel: string | null; imageModel: string | null }) {
   if (typeof window === "undefined") return;
@@ -111,17 +114,14 @@ function getUserID(): string {
 }
 
 function getSessionID(): string {
-  const existing = window.localStorage.getItem(sessionStorageKey);
-  if (existing != null && existing !== "") return existing;
-  const next = randomID("session");
-  window.localStorage.setItem(sessionStorageKey, next);
-  return next;
+  if (currentSessionID != null && currentSessionID !== "") return currentSessionID;
+  currentSessionID = randomID("session");
+  return currentSessionID;
 }
 
 function startNewSession(): string {
-  const next = randomID("session");
-  window.localStorage.setItem(sessionStorageKey, next);
-  return next;
+  currentSessionID = randomID("session");
+  return currentSessionID;
 }
 
 async function ensureSession(baseURL: string, userID: string, sessionID: string) {

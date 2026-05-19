@@ -42,6 +42,9 @@ func NewWith(ctx context.Context, cfg config.Config, llm model.LLM, imgGen image
 		Model:       llm,
 		Description: "Recipe copilot that manages recipes by calling the installed recipes-cli.",
 		Instruction: instruction,
+		BeforeModelCallbacks: []llmagent.BeforeModelCallback{
+			newContextTrimCallback(),
+		},
 		Tools: []adktool.Tool{
 			photoTool,
 			cliTool,
