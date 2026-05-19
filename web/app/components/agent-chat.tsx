@@ -1,4 +1,12 @@
-import { Bot, MessageCircle, RotateCcw, Send, X } from "lucide-react";
+import {
+  Bot,
+  ImageIcon,
+  MessageCircle,
+  RotateCcw,
+  Send,
+  Sparkles,
+  X,
+} from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useRevalidator } from "react-router";
@@ -573,6 +581,7 @@ export function AgentChat() {
                 prefs.options.imageOptions.length > 1 ? (
                   <ModelDropdown
                     ariaLabel="Image model"
+                    icon={<ImageIcon className="size-3.5" />}
                     options={prefs.options.imageOptions.map((opt) => ({
                       id: opt.id,
                       label: opt.model,
@@ -591,6 +600,7 @@ export function AgentChat() {
                 prefs.options.agentOptions.length > 1 ? (
                   <ModelDropdown
                     ariaLabel="Agent model"
+                    icon={<Sparkles className="size-3.5" />}
                     options={prefs.options.agentOptions.map((opt) => ({
                       id: opt.id,
                       label: opt.model,

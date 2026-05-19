@@ -1,4 +1,5 @@
 import { ChevronDown } from "lucide-react";
+import type { ReactNode } from "react";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -13,6 +14,7 @@ export type ModelDropdownProps = {
   onChange: (id: string) => void;
   ariaLabel: string;
   disabled?: boolean;
+  icon?: ReactNode;
 };
 
 const menuOffset = 6;
@@ -25,6 +27,7 @@ export function ModelDropdown({
   onChange,
   ariaLabel,
   disabled = false,
+  icon,
 }: ModelDropdownProps) {
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState<number>(() =>
@@ -158,6 +161,11 @@ export function ModelDropdown({
           disabled ? "cursor-not-allowed opacity-60" : "",
         ].join(" ")}
       >
+        {icon != null ? (
+          <span className="flex shrink-0 items-center" aria-hidden>
+            {icon}
+          </span>
+        ) : null}
         <span className="truncate">{current?.label ?? "Select"}</span>
         <ChevronDown className="size-3 shrink-0" aria-hidden />
       </button>
