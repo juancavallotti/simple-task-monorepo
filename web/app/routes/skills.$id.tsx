@@ -8,7 +8,7 @@ import {
   useSubmit,
 } from "react-router";
 
-import { MarkdownMessage } from "~/components/agent-chat/markdown-message";
+import { SkillMarkdown } from "~/components/skill-markdown";
 import type {
   Skill,
   SkillCreate,
@@ -332,7 +332,7 @@ export default function SkillDetail() {
                 Markdown preview appears here.
               </p>
             ) : (
-              <MarkdownMessage content={content} />
+              <SkillMarkdown content={content} />
             )}
           </div>
         </div>
