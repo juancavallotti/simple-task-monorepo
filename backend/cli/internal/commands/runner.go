@@ -27,6 +27,8 @@ type RecipeRepo interface {
 	LogTrace(ctx context.Context, eventID string, occurredAt time.Time, data json.RawMessage) error
 	ListEvents(ctx context.Context, limit, offset int) ([]types.Event, error)
 	ListTracesByEvent(ctx context.Context, eventID string, limit, offset int) ([]types.Trace, error)
+	ListSkills(ctx context.Context) ([]types.Skill, error)
+	GetSkillByName(ctx context.Context, name string) (types.Skill, error)
 }
 
 type RepoFactory func() (RecipeRepo, error)
@@ -172,6 +174,16 @@ func (r Runner) Run(ctx context.Context, args []string) error {
 		return r.cmdListEvents(ctx, repo, args[1:])
 	case "list-traces":
 		return r.cmdListTraces(ctx, repo, args[1:])
+	case "list-skills":
+		if len(args) != 1 {
+			return r.usageError("usage: recipes-cli list-skills")
+		}
+		return r.cmdListSkills(ctx, repo)
+	case "load-skill":
+		if len(args) != 2 {
+			return r.usageError("usage: recipes-cli load-skill <name>")
+		}
+		return r.cmdLoadSkill(ctx, repo, args[1])
 	default:
 		r.usage()
 		return ErrUsage
@@ -219,6 +231,10 @@ Commands:
   list-traces <event-id> [--limit N] [--offset N]
                                 Print traces for an event as JSON Lines, oldest first.
                                 limit defaults to 50, max 200.
+  list-skills                   Print available skills as JSON Lines: {name, description}.
+                                Use load-skill to fetch the full instructions for one.
+  load-skill <name>             Print the markdown content of one skill to stdout.
+                                Exits non-zero if no skill has that name.
   schema                        Print the JSON Schema for create and patch payloads.
 
 `

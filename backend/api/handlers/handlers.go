@@ -15,19 +15,36 @@ func New(r *repo.Repo) *Handlers {
 	return &Handlers{Repo: r}
 }
 
-// Register mounts recipe CRUD routes on r (typically *gin.Engine or a group).
-func (h *Handlers) Register(r gin.IRoutes) {
+// Register mounts API routes on r (typically *gin.Engine or a router group).
+func (h *Handlers) Register(r gin.IRouter) {
 	r.GET("/livez", h.Liveness)
 	r.GET("/readyz", h.Readiness)
-	r.GET("/recipes", h.ListRecipes)
-	r.GET("/recipes/:id", h.GetRecipe)
-	r.POST("/recipes", h.CreateRecipe)
-	r.POST("/recipes/:id/photos", h.AddRecipePhoto)
-	r.DELETE("/recipes/:id/photos/:photo_id", h.DeleteRecipePhoto)
-	r.PUT("/recipes/:id/photos/:photo_id/featured", h.SetFeaturedRecipePhoto)
-	r.PUT("/recipes/:id", h.ReplaceRecipe)
-	r.PATCH("/recipes/:id", h.PatchRecipe)
-	r.DELETE("/recipes/:id", h.DeleteRecipe)
-	r.GET("/events", h.ListEvents)
-	r.GET("/events/:event_id/traces", h.ListEventTraces)
+
+	recipes := r.Group("/recipes")
+	{
+		recipes.GET("", h.ListRecipes)
+		recipes.POST("", h.CreateRecipe)
+		recipes.GET("/:id", h.GetRecipe)
+		recipes.PUT("/:id", h.ReplaceRecipe)
+		recipes.PATCH("/:id", h.PatchRecipe)
+		recipes.DELETE("/:id", h.DeleteRecipe)
+		recipes.POST("/:id/photos", h.AddRecipePhoto)
+		recipes.DELETE("/:id/photos/:photo_id", h.DeleteRecipePhoto)
+		recipes.PUT("/:id/photos/:photo_id/featured", h.SetFeaturedRecipePhoto)
+	}
+
+	events := r.Group("/events")
+	{
+		events.GET("", h.ListEvents)
+		events.GET("/:event_id/traces", h.ListEventTraces)
+	}
+
+	skills := r.Group("/skills")
+	{
+		skills.GET("", h.ListSkills)
+		skills.POST("", h.CreateSkill)
+		skills.GET("/:id", h.GetSkill)
+		skills.PATCH("/:id", h.PatchSkill)
+		skills.DELETE("/:id", h.DeleteSkill)
+	}
 }
