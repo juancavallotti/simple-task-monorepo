@@ -1,18 +1,8 @@
 import { useEffect } from "react";
 import { Wrench, X } from "lucide-react";
 
+import { JsonBlock } from "~/components/json-block";
 import type { ToolCall } from "~/lib/agent-ui-actions";
-
-import { HighlightedJSON } from "./highlighted-json";
-
-function formatJSON(value: unknown): string {
-  if (value === undefined) return "";
-  try {
-    return JSON.stringify(value, null, 2);
-  } catch {
-    return String(value);
-  }
-}
 
 export function ToolCallDialog({
   call,
@@ -29,8 +19,6 @@ export function ToolCallDialog({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
-  const argsBody = formatJSON(call.args);
-  const responseBody = formatJSON(call.response);
   const statusLabel =
     call.status === "pending"
       ? "Running"
@@ -89,29 +77,25 @@ export function ToolCallDialog({
             <h4 className="mb-1.5 text-[0.6875rem] font-semibold uppercase tracking-wide text-zinc-500">
               Arguments
             </h4>
-            <pre className="whitespace-pre-wrap break-words rounded-lg bg-zinc-900 px-3 py-2 font-mono text-xs leading-relaxed text-zinc-300">
-              {argsBody === "" ? (
-                <span className="text-zinc-500">(no arguments)</span>
-              ) : (
-                <HighlightedJSON source={argsBody} />
-              )}
-            </pre>
+            <JsonBlock
+              value={call.args}
+              empty={<span className="text-zinc-500">(no arguments)</span>}
+            />
           </section>
           <section>
             <h4 className="mb-1.5 text-[0.6875rem] font-semibold uppercase tracking-wide text-zinc-500">
               Response
             </h4>
-            <pre className="whitespace-pre-wrap break-words rounded-lg bg-zinc-900 px-3 py-2 font-mono text-xs leading-relaxed text-zinc-300">
-              {responseBody === "" ? (
+            <JsonBlock
+              value={call.response}
+              empty={
                 <span className="text-zinc-500">
                   {call.status === "pending"
                     ? "(awaiting response)"
                     : "(no response data)"}
                 </span>
-              ) : (
-                <HighlightedJSON source={responseBody} />
-              )}
-            </pre>
+              }
+            />
           </section>
         </div>
       </div>

@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { X } from "lucide-react";
 
-import { HighlightedJSON } from "./highlighted-json";
+import { JsonBlock } from "~/components/json-block";
 
 export function DebugDialog({
   title,
@@ -56,13 +56,11 @@ export function DebugDialog({
             </button>
           </div>
         </header>
-        <pre className="flex-1 overflow-auto whitespace-pre-wrap break-words px-4 py-3 font-mono text-xs leading-relaxed text-zinc-300">
-          {body === "" ? (
-            "(no debug data captured)"
-          ) : (
-            <HighlightedJSON source={body} />
-          )}
-        </pre>
+        <JsonBlock
+          source={body}
+          variant="debug"
+          empty="(no debug data captured)"
+        />
       </div>
     </div>
   );
