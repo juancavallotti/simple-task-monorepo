@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func (r Runner) cmdLogTrace(ctx context.Context, repo RecipeRepo, args []string) error {
+func (r Runner) cmdLogTrace(ctx context.Context, repo TraceRepo, args []string) error {
 	eventField := "invocation_id"
 	timeField := "time"
 	usage := "usage: recipes-cli log-trace [--event-id-field <name>] [--time-field <name>]"
@@ -44,26 +44,26 @@ func (r Runner) cmdLogTrace(ctx context.Context, repo RecipeRepo, args []string)
 		}
 		var raw map[string]json.RawMessage
 		if err := json.Unmarshal([]byte(line), &raw); err != nil {
-			fmt.Fprintf(r.stderr, "log-trace: skipping invalid JSON line: %v\n", err)
+			r.log().WarnContext(ctx, "log-trace.skip_invalid_json", "err", err)
 			skipped++
 			continue
 		}
 
 		eventID, ok := readStringField(raw, eventField)
 		if !ok {
-			fmt.Fprintf(r.stderr, "log-trace: skipping line without/empty %q\n", eventField)
+			r.log().WarnContext(ctx, "log-trace.skip_missing_field", "field", eventField)
 			skipped++
 			continue
 		}
 		tsStr, ok := readStringField(raw, timeField)
 		if !ok {
-			fmt.Fprintf(r.stderr, "log-trace: skipping line without/empty %q\n", timeField)
+			r.log().WarnContext(ctx, "log-trace.skip_missing_field", "field", timeField)
 			skipped++
 			continue
 		}
 		occurredAt, err := time.Parse(time.RFC3339Nano, tsStr)
 		if err != nil {
-			fmt.Fprintf(r.stderr, "log-trace: skipping line with unparseable %s=%q: %v\n", timeField, tsStr, err)
+			r.log().WarnContext(ctx, "log-trace.skip_bad_time", "field", timeField, "value", tsStr, "err", err)
 			skipped++
 			continue
 		}
@@ -76,11 +76,11 @@ func (r Runner) cmdLogTrace(ctx context.Context, repo RecipeRepo, args []string)
 	if err := scanner.Err(); err != nil {
 		return fmt.Errorf("log-trace: read stdin: %w", err)
 	}
-	fmt.Fprintf(r.stderr, "log-trace: inserted=%d skipped=%d\n", inserted, skipped)
+	r.log().InfoContext(ctx, "log-trace.summary", "inserted", inserted, "skipped", skipped)
 	return nil
 }
 
-func (r Runner) cmdListEvents(ctx context.Context, repo RecipeRepo, args []string) error {
+func (r Runner) cmdListEvents(ctx context.Context, repo TraceRepo, args []string) error {
 	const usage = "usage: recipes-cli list-events [--limit N] [--offset N]"
 	limit, offset, err := parsePagingFlags(args, usage)
 	if err != nil {
@@ -102,7 +102,7 @@ func (r Runner) cmdListEvents(ctx context.Context, repo RecipeRepo, args []strin
 	return nil
 }
 
-func (r Runner) cmdListTraces(ctx context.Context, repo RecipeRepo, args []string) error {
+func (r Runner) cmdListTraces(ctx context.Context, repo TraceRepo, args []string) error {
 	const usage = "usage: recipes-cli list-traces <event-id> [--limit N] [--offset N]"
 	if len(args) < 1 {
 		return r.usageError(usage)

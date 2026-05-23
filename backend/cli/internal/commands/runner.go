@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"time"
 
 	types "juancavallotti.com/recipe-types"
@@ -24,29 +25,57 @@ type RecipeRepo interface {
 	SetFeaturedRecipePhoto(ctx context.Context, recipeID string, photoID string) error
 	DeleteRecipe(ctx context.Context, id string) error
 	ImportRecipe(ctx context.Context, recipe types.Recipe) error
+}
+
+type TraceRepo interface {
 	LogTrace(ctx context.Context, eventID string, occurredAt time.Time, data json.RawMessage) error
 	ListEvents(ctx context.Context, limit, offset int) ([]types.Event, error)
 	ListTracesByEvent(ctx context.Context, eventID string, limit, offset int) ([]types.Trace, error)
+}
+
+type SkillRepo interface {
 	ListSkills(ctx context.Context) ([]types.Skill, error)
 	GetSkillByName(ctx context.Context, name string) (types.Skill, error)
 }
 
-type RepoFactory func() (RecipeRepo, error)
+type CommandRepo interface {
+	RecipeRepo
+	TraceRepo
+	SkillRepo
+}
+
+type RepoFactory func() (CommandRepo, error)
 
 type Runner struct {
 	stdin       io.Reader
 	stdout      io.Writer
 	stderr      io.Writer
+	logger      *slog.Logger
 	repoFactory RepoFactory
 }
 
 func NewRunner(stdin io.Reader, stdout io.Writer, stderr io.Writer, repoFactory RepoFactory) Runner {
+	return NewRunnerWithLogger(stdin, stdout, stderr, slog.New(slog.NewJSONHandler(stderr, nil)), repoFactory)
+}
+
+func NewRunnerWithLogger(stdin io.Reader, stdout io.Writer, stderr io.Writer, logger *slog.Logger, repoFactory RepoFactory) Runner {
+	if logger == nil {
+		logger = slog.Default()
+	}
 	return Runner{
 		stdin:       stdin,
 		stdout:      stdout,
 		stderr:      stderr,
+		logger:      logger,
 		repoFactory: repoFactory,
 	}
+}
+
+func (r Runner) log() *slog.Logger {
+	if r.logger != nil {
+		return r.logger
+	}
+	return slog.Default()
 }
 
 func (r Runner) Run(ctx context.Context, args []string) error {

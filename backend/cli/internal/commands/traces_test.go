@@ -34,7 +34,9 @@ func TestRun_LogTraceInsertsRowFromStdin(t *testing.T) {
 	if string(got.data) != line {
 		t.Fatalf("data = %s, want %s", got.data, line)
 	}
-	if !strings.Contains(stderr.String(), "inserted=1 skipped=0") {
+	if !strings.Contains(stderr.String(), `"msg":"log-trace.summary"`) ||
+		!strings.Contains(stderr.String(), `"inserted":1`) ||
+		!strings.Contains(stderr.String(), `"skipped":0`) {
 		t.Fatalf("stderr = %q", stderr.String())
 	}
 }
@@ -58,12 +60,12 @@ func TestRun_LogTraceSkipsLinesMissingFields(t *testing.T) {
 	repo := &fakeRepo{}
 	var factoryCalls int
 	stdin := strings.Join([]string{
-		`{"msg":"agent.starting","time":"2026-05-22T10:00:00Z"}`,           // no invocation_id
+		`{"msg":"agent.starting","time":"2026-05-22T10:00:00Z"}`,                        // no invocation_id
 		`{"time":"2026-05-22T10:00:01Z","msg":"agent.event","invocation_id":"inv-xyz"}`, // good
 		`{"msg":"agent.event","invocation_id":"inv-notime"}`,                            // no time
 		`{"time":"bogus","invocation_id":"inv-badtime"}`,                                // unparseable time
-		`not even json`,                                                                 // bad json
-		``,                                                                              // blank
+		`not even json`, // bad json
+		``,              // blank
 	}, "\n") + "\n"
 	r, _, stderr := testRunner(stdin, repo, &factoryCalls)
 
@@ -76,8 +78,10 @@ func TestRun_LogTraceSkipsLinesMissingFields(t *testing.T) {
 	if repo.logTraceEntries[0].eventID != "inv-xyz" {
 		t.Fatalf("eventID = %q", repo.logTraceEntries[0].eventID)
 	}
-	if !strings.Contains(stderr.String(), "inserted=1 skipped=4") {
-		t.Fatalf("stderr = %q, want inserted=1 skipped=4", stderr.String())
+	if !strings.Contains(stderr.String(), `"msg":"log-trace.summary"`) ||
+		!strings.Contains(stderr.String(), `"inserted":1`) ||
+		!strings.Contains(stderr.String(), `"skipped":4`) {
+		t.Fatalf("stderr = %q, want structured summary with inserted=1 skipped=4", stderr.String())
 	}
 }
 

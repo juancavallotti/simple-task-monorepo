@@ -4,6 +4,7 @@ import { Link, useFetcher } from "react-router";
 
 import type { Recipe } from "~/lib/recipe-api";
 import { getRecipeDisplayPhotos } from "~/lib/recipe-photos";
+import { MarkdownView } from "./markdown-view";
 import { RecipePhotoViewer } from "./recipe-photo-viewer";
 
 type DeleteRecipeActionResult =
@@ -126,9 +127,12 @@ export function RecipeList({
                     ) : null}
                   </div>
                   {recipe.description.trim() !== "" ? (
-                    <p className="mt-1 line-clamp-2 text-sm text-zinc-600 dark:text-zinc-400">
+                    <MarkdownView
+                      variant="preview"
+                      className="mt-1 line-clamp-2 text-sm text-zinc-600 dark:text-zinc-400"
+                    >
                       {recipe.description}
-                    </p>
+                    </MarkdownView>
                   ) : null}
                   <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-500">
                     Added {formatDate(recipe.created_at)}
