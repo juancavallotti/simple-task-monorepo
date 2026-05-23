@@ -1,6 +1,7 @@
 import {
   Bot,
   ImageIcon,
+  Loader2,
   MessageCircle,
   RotateCcw,
   Send,
@@ -8,7 +9,7 @@ import {
   X,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocation, useNavigate, useRevalidator } from "react-router";
 import {
   extractUIActionsFromEvent,
@@ -62,6 +63,7 @@ type ChatMessage = {
   role: "user" | "assistant";
   content: string;
   uiActions?: UIAction[];
+  rawDebug?: string;
 };
 
 type AppContext = {
@@ -165,10 +167,19 @@ function extractText(event: AgentEvent): string {
   );
 }
 
+type BubbleStreamHandlers = {
+  onProgress: (text: string, uiActions: UIAction[]) => void;
+  onBubbleFinish: (
+    text: string,
+    uiActions: UIAction[],
+    rawEvents: string[],
+  ) => void;
+};
+
 async function readAgentStream(
   response: Response,
-  onUpdate: (text: string, uiActions: UIAction[]) => void,
-): Promise<{ text: string; uiActions: UIAction[] }> {
+  handlers: BubbleStreamHandlers,
+): Promise<void> {
   if (response.body == null) {
     throw new Error("Agent response did not include a stream.");
   }
@@ -178,6 +189,20 @@ async function readAgentStream(
   let buffer = "";
   let accumulatedText = "";
   let accumulatedUIActions: UIAction[] = [];
+  let bubbleRawEvents: string[] = [];
+  let bubbleHasContent = false;
+
+  function finalizeBubble() {
+    handlers.onBubbleFinish(
+      accumulatedText,
+      accumulatedUIActions,
+      bubbleRawEvents,
+    );
+    accumulatedText = "";
+    accumulatedUIActions = [];
+    bubbleRawEvents = [];
+    bubbleHasContent = false;
+  }
 
   function processRawEvent(rawEvent: string) {
     const data = rawEvent
@@ -186,6 +211,7 @@ async function readAgentStream(
       .map((line) => line.slice(5).trimStart())
       .join("\n");
     if (data === "") return;
+    bubbleRawEvents.push(data);
 
     const parsed = JSON.parse(data) as AgentEvent | { error?: string };
     if ("error" in parsed && typeof parsed.error === "string") {
@@ -198,29 +224,32 @@ async function readAgentStream(
         ...accumulatedUIActions,
         ...eventUIActions,
       ]);
+      bubbleHasContent = true;
     }
     const text = extractText(event);
-    if (text === "") {
-      if (eventUIActions.length > 0) {
-        onUpdate(accumulatedText, accumulatedUIActions);
+    if (text !== "") {
+      if (event.partial) {
+        accumulatedText = text.startsWith(accumulatedText)
+          ? text
+          : `${accumulatedText}${text}`;
+      } else if (
+        accumulatedText === "" ||
+        text.startsWith(accumulatedText)
+      ) {
+        accumulatedText = text;
+      } else if (!accumulatedText.endsWith(text)) {
+        accumulatedText = `${accumulatedText}${text}`;
       }
-      return;
+      bubbleHasContent = true;
     }
 
-    if (event.partial) {
-      accumulatedText = text.startsWith(accumulatedText)
-        ? text
-        : `${accumulatedText}${text}`;
-    } else if (
-      accumulatedText === "" ||
-      text.startsWith(accumulatedText)
-    ) {
-      accumulatedText = text;
-    } else if (!accumulatedText.endsWith(text)) {
-      accumulatedText = `${accumulatedText}${text}`;
+    if (text !== "" || eventUIActions.length > 0) {
+      handlers.onProgress(accumulatedText, accumulatedUIActions);
     }
 
-    onUpdate(accumulatedText, accumulatedUIActions);
+    if (event.turnComplete === true && bubbleHasContent) {
+      finalizeBubble();
+    }
   }
 
   while (true) {
@@ -242,7 +271,21 @@ async function readAgentStream(
     processRawEvent(buffer);
   }
 
-  return { text: accumulatedText, uiActions: accumulatedUIActions };
+  if (bubbleHasContent || bubbleRawEvents.length > 0) {
+    finalizeBubble();
+  }
+}
+
+function formatRawEvents(rawEvents: string[]): string {
+  return rawEvents
+    .map((event) => {
+      try {
+        return JSON.stringify(JSON.parse(event), null, 2);
+      } catch {
+        return event;
+      }
+    })
+    .join("\n\n");
 }
 
 function getHighlightedText(): string | undefined {
@@ -327,12 +370,125 @@ function MarkdownMessage({ content }: { content: string }) {
   );
 }
 
+function HighlightedJSON({ source }: { source: string }) {
+  const tokens: ReactNode[] = [];
+  const regex =
+    /("(?:\\.|[^"\\])*")(\s*:)?|\b(true|false|null)\b|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g;
+  let lastIndex = 0;
+  let key = 0;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(source)) !== null) {
+    if (match.index > lastIndex) {
+      tokens.push(source.slice(lastIndex, match.index));
+    }
+    if (match[1] != null) {
+      const isKey = match[2] != null;
+      tokens.push(
+        <span
+          key={key++}
+          className={isKey ? "text-amber-300" : "text-emerald-300"}
+        >
+          {match[1]}
+        </span>,
+      );
+      if (isKey) tokens.push(match[2]);
+    } else if (match[3] != null) {
+      tokens.push(
+        <span
+          key={key++}
+          className={match[3] === "null" ? "text-zinc-500" : "text-rose-300"}
+        >
+          {match[3]}
+        </span>,
+      );
+    } else if (match[4] != null) {
+      tokens.push(
+        <span key={key++} className="text-sky-300">
+          {match[4]}
+        </span>,
+      );
+    }
+    lastIndex = regex.lastIndex;
+  }
+  if (lastIndex < source.length) {
+    tokens.push(source.slice(lastIndex));
+  }
+  return <>{tokens}</>;
+}
+
+function DebugDialog({
+  message,
+  onClose,
+}: {
+  message: ChatMessage;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  const title = message.role === "user" ? "Raw request" : "Raw response";
+  const body = message.rawDebug ?? "";
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-zinc-950/85 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 text-zinc-100 shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
+          <h3 className="text-sm font-semibold">{title}</h3>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              className="rounded-full px-2.5 py-1 text-xs font-medium text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500"
+              onClick={() => {
+                if (typeof navigator !== "undefined" && navigator.clipboard) {
+                  void navigator.clipboard.writeText(body);
+                }
+              }}
+            >
+              Copy
+            </button>
+            <button
+              type="button"
+              className="rounded-full p-2 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500"
+              onClick={onClose}
+              aria-label="Close debug dialog"
+            >
+              <X className="size-4" aria-hidden />
+            </button>
+          </div>
+        </header>
+        <pre className="flex-1 overflow-auto whitespace-pre-wrap break-words px-4 py-3 font-mono text-xs leading-relaxed text-zinc-300">
+          {body === "" ? (
+            "(no debug data captured)"
+          ) : (
+            <HighlightedJSON source={body} />
+          )}
+        </pre>
+      </div>
+    </div>
+  );
+}
+
 export function AgentChat() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [debugMessage, setDebugMessage] = useState<ChatMessage | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const baseURL = useMemo(getAgentBaseURL, []);
@@ -373,40 +529,42 @@ export function AgentChat() {
       highlightedText: getHighlightedText(),
     };
 
+    const userID = getUserID();
+    const sessionID = getSessionID();
+    const body: Record<string, unknown> = {
+      appName: agentAppName,
+      userId: userID,
+      sessionId: sessionID,
+      streaming: true,
+      newMessage: {
+        role: "user",
+        parts: [{ text: buildAgentMessage(text, appContext) }],
+      },
+    };
+    const modelContext = buildModelContext(prefs);
+    if (modelContext != null) {
+      body.modelContext = modelContext;
+    }
+
     const userMessage: ChatMessage = {
       id: randomID("user"),
       role: "user",
       content: text,
+      rawDebug: JSON.stringify(body, null, 2),
     };
-    const assistantID = randomID("assistant");
+    let currentAssistantID = randomID("assistant");
     setMessages((current) => [
       ...current,
       userMessage,
-      { id: assistantID, role: "assistant", content: "" },
+      { id: currentAssistantID, role: "assistant", content: "" },
     ]);
     setDraft("");
     setError(null);
     setIsSending(true);
+    let pendingNextBubble = false;
 
     try {
-      const userID = getUserID();
-      const sessionID = getSessionID();
       await ensureSession(baseURL, userID, sessionID);
-
-      const body: Record<string, unknown> = {
-        appName: agentAppName,
-        userId: userID,
-        sessionId: sessionID,
-        streaming: true,
-        newMessage: {
-          role: "user",
-          parts: [{ text: buildAgentMessage(text, appContext) }],
-        },
-      };
-      const modelContext = buildModelContext(prefs);
-      if (modelContext != null) {
-        body.modelContext = modelContext;
-      }
 
       const res = await fetch(`${baseURL}/run_sse`, {
         method: "POST",
@@ -418,44 +576,61 @@ export function AgentChat() {
         throw new Error(`Agent request failed (${res.status})`);
       }
 
-      const streamResult = await readAgentStream(res, (chunk, streamUIActions) => {
-        const parsed = parseAssistantResponse(chunk);
-        setMessages((current) =>
-          replaceMessageContent(
-            current,
-            assistantID,
-            parsed.content,
-            uniqueUIActions([...streamUIActions, ...parsed.uiActions]),
-          ),
-        );
+      await readAgentStream(res, {
+        onProgress: (chunk, streamUIActions) => {
+          if (pendingNextBubble) {
+            currentAssistantID = randomID("assistant");
+            const newID = currentAssistantID;
+            setMessages((current) => [
+              ...current,
+              { id: newID, role: "assistant", content: "" },
+            ]);
+            pendingNextBubble = false;
+          }
+          const id = currentAssistantID;
+          const parsed = parseAssistantResponse(chunk);
+          setMessages((current) =>
+            replaceMessageContent(
+              current,
+              id,
+              parsed.content,
+              uniqueUIActions([...streamUIActions, ...parsed.uiActions]),
+            ),
+          );
+        },
+        onBubbleFinish: (chunk, streamUIActions, rawEvents) => {
+          const id = currentAssistantID;
+          const parsed = parseAssistantResponse(chunk);
+          const uiActions = uniqueUIActions([
+            ...streamUIActions,
+            ...parsed.uiActions,
+          ]);
+          const rawDebug = formatRawEvents(rawEvents);
+          setMessages((current) =>
+            current.map((message) =>
+              message.id === id
+                ? { ...message, content: parsed.content, uiActions, rawDebug }
+                : message,
+            ),
+          );
+          for (const action of uiActions) {
+            if (action.type === "navigate_recipe") {
+              void navigate(`/recipe/${encodeURIComponent(action.recipeId)}`);
+            } else if (action.type === "navigate_recipe_list") {
+              void navigate("/");
+            } else if (action.type === "refresh_current_screen") {
+              void revalidator.revalidate();
+            }
+          }
+          pendingNextBubble = true;
+        },
       });
-      const parsed = parseAssistantResponse(streamResult.text);
-      const uiActions = uniqueUIActions([
-        ...streamResult.uiActions,
-        ...parsed.uiActions,
-      ]);
-      setMessages((current) =>
-        replaceMessageContent(
-          current,
-          assistantID,
-          parsed.content,
-          uiActions,
-        ),
-      );
-      for (const action of uiActions) {
-        if (action.type === "navigate_recipe") {
-          void navigate(`/recipe/${encodeURIComponent(action.recipeId)}`);
-        } else if (action.type === "navigate_recipe_list") {
-          void navigate("/");
-        } else if (action.type === "refresh_current_screen") {
-          void revalidator.revalidate();
-        }
-      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Agent request failed.");
+      const lastID = currentAssistantID;
       setMessages((current) =>
         current.filter(
-          (message) => message.id !== assistantID || message.content !== "",
+          (message) => message.id !== lastID || message.content !== "",
         ),
       );
     } finally {
@@ -504,7 +679,10 @@ export function AgentChat() {
           </header>
 
           <div className="flex-1 space-y-3 overflow-y-auto bg-zinc-50/80 px-4 py-4 dark:bg-zinc-950/40">
-            {messages.map((message) => (
+            {messages.map((message) => {
+              const isClickable =
+                message.rawDebug != null && message.rawDebug !== "";
+              return (
               <div
                 key={message.id}
                 className={[
@@ -513,8 +691,33 @@ export function AgentChat() {
                 ].join(" ")}
               >
                 <div
+                  role={isClickable ? "button" : undefined}
+                  tabIndex={isClickable ? 0 : undefined}
+                  title={isClickable ? "View raw debug payload" : undefined}
+                  onClick={
+                    isClickable
+                      ? (event) => {
+                          const target = event.target as HTMLElement;
+                          if (target.closest("a, button")) return;
+                          setDebugMessage(message);
+                        }
+                      : undefined
+                  }
+                  onKeyDown={
+                    isClickable
+                      ? (event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            setDebugMessage(message);
+                          }
+                        }
+                      : undefined
+                  }
                   className={[
                     "max-w-[85%] rounded-2xl px-3 py-2 text-sm shadow-sm",
+                    isClickable
+                      ? "cursor-pointer transition hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+                      : "",
                     message.role === "user"
                       ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
                       : "border border-zinc-200 bg-white text-zinc-800 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100",
@@ -545,7 +748,8 @@ export function AgentChat() {
                   )}
                 </div>
               </div>
-            ))}
+              );
+            })}
             {error ? (
               <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200">
                 {error}
@@ -619,10 +823,15 @@ export function AgentChat() {
                 <button
                   type="submit"
                   disabled={draft.trim() === "" || isSending}
-                  className="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-600 text-white shadow-sm transition hover:bg-amber-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 dark:focus-visible:ring-offset-zinc-900"
-                  aria-label="Send message"
+                  className="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-600 text-white shadow-sm transition hover:bg-amber-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-70 dark:focus-visible:ring-offset-zinc-900"
+                  aria-label={isSending ? "Agent is working" : "Send message"}
+                  aria-busy={isSending}
                 >
-                  <Send className="size-4" aria-hidden />
+                  {isSending ? (
+                    <Loader2 className="size-4 animate-spin" aria-hidden />
+                  ) : (
+                    <Send className="size-4" aria-hidden />
+                  )}
                 </button>
               </div>
             </div>
@@ -638,6 +847,12 @@ export function AgentChat() {
           <MessageCircle className="size-6" aria-hidden />
         </button>
       )}
+      {debugMessage != null ? (
+        <DebugDialog
+          message={debugMessage}
+          onClose={() => setDebugMessage(null)}
+        />
+      ) : null}
     </div>
   );
 }
