@@ -24,6 +24,8 @@ type fakeStore struct {
 	listTracesLimit    int
 	listTracesOffset   int
 	listTracesResult   []types.Trace
+	deleteAllCalls     int
+	deleteEventID      string
 }
 
 func (f *fakeStore) InsertTrace(ctx context.Context, eventID string, occurredAt time.Time, data json.RawMessage) error {
@@ -49,10 +51,12 @@ func (f *fakeStore) ListTracesByEvent(ctx context.Context, eventID string, limit
 }
 
 func (f *fakeStore) DeleteAllEvents(ctx context.Context) error {
+	f.deleteAllCalls++
 	return nil
 }
 
 func (f *fakeStore) DeleteEventByID(ctx context.Context, eventID string) error {
+	f.deleteEventID = eventID
 	return nil
 }
 
@@ -233,5 +237,45 @@ func TestService_ListTracesByEvent_defaultsLimitWhenInvalid(t *testing.T) {
 				t.Fatalf("got (limit=%d, offset=%d), want (%d, %d)", f.listTracesLimit, f.listTracesOffset, tc.wantLim, tc.wantOff)
 			}
 		})
+	}
+}
+
+func TestService_DeleteAllEvents_DelegatesToStore(t *testing.T) {
+	t.Parallel()
+	f := &fakeStore{}
+	s := &Service{store: f}
+
+	if err := s.DeleteAllEvents(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if f.deleteAllCalls != 1 {
+		t.Fatalf("deleteAll calls = %d, want 1", f.deleteAllCalls)
+	}
+}
+
+func TestService_DeleteEvent_rejectsEmptyEventID(t *testing.T) {
+	t.Parallel()
+	f := &fakeStore{}
+	s := &Service{store: f}
+
+	err := s.DeleteEvent(context.Background(), " ")
+	if !errors.Is(err, ErrEmptyEventID) {
+		t.Fatalf("err = %v, want ErrEmptyEventID", err)
+	}
+	if f.deleteEventID != "" {
+		t.Fatalf("store should not be called, eventID = %q", f.deleteEventID)
+	}
+}
+
+func TestService_DeleteEvent_DelegatesToStore(t *testing.T) {
+	t.Parallel()
+	f := &fakeStore{}
+	s := &Service{store: f}
+
+	if err := s.DeleteEvent(context.Background(), "event-1"); err != nil {
+		t.Fatal(err)
+	}
+	if f.deleteEventID != "event-1" {
+		t.Fatalf("delete eventID = %q, want event-1", f.deleteEventID)
 	}
 }

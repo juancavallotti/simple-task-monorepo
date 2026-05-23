@@ -240,3 +240,100 @@ func TestStore_ListTracesByEvent_returnsRows(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestStore_DeleteAllEvents_nilDB(t *testing.T) {
+	t.Parallel()
+	s := &Store{db: nil}
+	if err := s.DeleteAllEvents(context.Background()); !errors.Is(err, errNilDB) {
+		t.Fatalf("err = %v, want errNilDB", err)
+	}
+}
+
+func TestStore_DeleteAllEvents_success(t *testing.T) {
+	t.Parallel()
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	s := NewStore(db)
+
+	mock.ExpectExec("DELETE FROM events").
+		WillReturnResult(sqlmock.NewResult(0, 3))
+
+	if err := s.DeleteAllEvents(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestStore_DeleteEventByID_nilDB(t *testing.T) {
+	t.Parallel()
+	s := &Store{db: nil}
+	if err := s.DeleteEventByID(context.Background(), "event-1"); !errors.Is(err, errNilDB) {
+		t.Fatalf("err = %v, want errNilDB", err)
+	}
+}
+
+func TestStore_DeleteEventByID_emptyEventID(t *testing.T) {
+	t.Parallel()
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	s := NewStore(db)
+
+	err = s.DeleteEventByID(context.Background(), " ")
+	if !errors.Is(err, ErrEventNotFound) {
+		t.Fatalf("err = %v, want ErrEventNotFound", err)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestStore_DeleteEventByID_notFound(t *testing.T) {
+	t.Parallel()
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	s := NewStore(db)
+
+	mock.ExpectExec("DELETE FROM events").
+		WithArgs("event-1").
+		WillReturnResult(sqlmock.NewResult(0, 0))
+
+	err = s.DeleteEventByID(context.Background(), "event-1")
+	if !errors.Is(err, ErrEventNotFound) {
+		t.Fatalf("err = %v, want ErrEventNotFound", err)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestStore_DeleteEventByID_success(t *testing.T) {
+	t.Parallel()
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	s := NewStore(db)
+
+	mock.ExpectExec("DELETE FROM events").
+		WithArgs("event-1").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	if err := s.DeleteEventByID(context.Background(), "event-1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatal(err)
+	}
+}
