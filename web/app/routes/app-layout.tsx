@@ -1,4 +1,4 @@
-import { Activity, BookOpen, ChefHat, CirclePlus } from "lucide-react";
+import { Activity, BookOpen, ChefHat, CirclePlus, Sparkles } from "lucide-react";
 import { useEffect } from "react";
 import { NavLink, Outlet, useLoaderData } from "react-router";
 
@@ -148,7 +148,18 @@ function AppLayoutContents() {
               </span>
             )}
           </NavLink>
-          <div className="mt-auto">
+          <div className="mt-auto flex flex-col gap-1">
+            <NavLink
+              to="/skills"
+              className="group block rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-zinc-900"
+            >
+              {({ isActive }) => (
+                <span className={navClass(isActive)}>
+                  <Sparkles className={navIconClass(isActive)} aria-hidden />
+                  Skills
+                </span>
+              )}
+            </NavLink>
             <NavLink
               to="/traces"
               className="group block rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-zinc-900"
