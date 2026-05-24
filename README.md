@@ -132,6 +132,56 @@ Environment knobs: `TTL` (e.g. `30m`, `1h`, `4h`, `24h` — default `4h`), `TAG`
 
 _To be written._
 
+### Kubernetes Topology
+
+The Helm chart in [helm/](helm/) ships four workloads plus optional ingress:
+
+- **postgres** — `StatefulSet` with a `PersistentVolumeClaim` for `/var/lib/postgresql/data`, fronted by a headless `ClusterIP` Service. Credentials and database name come from a generated `Secret`. A one-shot `Job` runs the schema migration on install/upgrade.
+- **backend** — `Deployment` running `recipes-api`, exposed in-cluster as a `ClusterIP` Service. Reads Postgres creds from the postgres Secret.
+- **agent** — `Deployment` running `recipes-agent`, exposed in-cluster as a `ClusterIP` Service on port `4100`. Provider keys (`GEMINI_API_KEY`, optional `OPENAI_API_KEY` / `ANTHROPIC_API_KEY`) are mounted from the `recipes-agent` Secret. A scratch `emptyDir` (`/agent-images`, 100Mi) holds generated images before they're attached to recipes.
+- **web** — `Deployment` running the React Router SSR server behind a `NodePort` Service (port `3000`). Server-side loaders call the backend Service in-cluster; override with `web.recipesApiBase` if needed.
+
+Ingress is opt-in (`ingress.enabled=true`, default class `nginx`, host `recipes.local`). When enabled, a single `Ingress` resource routes:
+
+| Path      | Service        | Port   |
+| --------- | -------------- | ------ |
+| `/agent`  | agent Service  | `4100` |
+| `/`       | web Service    | `3000` |
+
+The `/agent` route carries SSE traffic, so the chart sets `nginx.ingress.kubernetes.io/proxy-read-timeout`, `proxy-send-timeout`, and `proxy-buffering: off` to keep long-lived streaming responses flowing.
+
+```
+                           ┌───────────────────────┐
+              recipes.local│      Ingress (nginx)  │
+              ─────────────▶                       │
+                           └──────┬──────────┬─────┘
+                              /          /agent
+                              ▼              ▼
+                      ┌──────────────┐  ┌──────────────┐
+                      │ web Service  │  │ agent Service│
+                      │   :3000      │  │    :4100     │
+                      └──────┬───────┘  └──────┬───────┘
+                             │                 │
+                      ┌──────▼───────┐  ┌──────▼───────┐
+                      │ web Pod (SSR)│  │  agent Pod   │
+                      └──────┬───────┘  └──────┬───────┘
+                             │ in-cluster      │ recipes-cli
+                             ▼                 ▼
+                          ┌──────────────────────┐
+                          │   backend Service    │
+                          │        :4000         │
+                          └──────────┬───────────┘
+                                     ▼
+                              ┌──────────────┐
+                              │ backend Pod  │
+                              └──────┬───────┘
+                                     ▼
+                              ┌──────────────┐
+                              │  postgres    │
+                              │ StatefulSet  │
+                              └──────────────┘
+```
+
 ## Release Process
 
 Releases are managed with [release-please](https://github.com/googleapis/release-please) via [`.github/workflows/release-please.yml`](.github/workflows/release-please.yml), which runs on every push to `main`. Use Conventional Commit messages — `feat:` cuts a minor, `fix:` a patch, `feat!:` or a `BREAKING CHANGE:` footer a major. The bot opens a release PR that updates `CHANGELOG.md`, `.release-please-manifest.json`, and `helm/Chart.yaml`; merging it tags the release. Container images are not published automatically — run `task release:images` once the release PR is merged.
