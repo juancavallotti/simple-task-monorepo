@@ -14,10 +14,10 @@ import (
 
 const geminiEndpointFmt = "https://generativelanguage.googleapis.com/v1beta/models/%s:embedContent"
 
-// GeminiModel is the embedding model used for Gemini requests. The
-// text-embedding-004 family produces 768-dim vectors natively, matching
-// the pgvector column.
-const GeminiModel = "text-embedding-004"
+// GeminiModel is the embedding model used for Gemini requests.
+// gemini-embedding-001 supports MRL truncation via outputDimensionality,
+// which we set to 768 to match the pgvector column.
+const GeminiModel = "gemini-embedding-001"
 
 // GeminiClient calls Gemini's :embedContent REST endpoint directly. The
 // REST shape is small enough that pulling in the full google.golang.org/genai
