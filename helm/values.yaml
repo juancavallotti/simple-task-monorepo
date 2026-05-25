@@ -96,3 +96,10 @@ ingress:
     nginx.ingress.kubernetes.io/proxy-buffering: "off"
     # Allow large attachment uploads (multipart overhead beyond the raw file).
     nginx.ingress.kubernetes.io/proxy-body-size: "25m"
+  # TLS via cert-manager. When enabled, cert-manager issues a cert for `host`
+  # using the named ClusterIssuer and stores it in `secretName`.
+  # Apply helm/extras/selfsigned-cluster-issuer.yaml once per cluster to provision the issuer.
+  tls:
+    enabled: false
+    secretName: recipes-tls
+    clusterIssuer: selfsigned-ca

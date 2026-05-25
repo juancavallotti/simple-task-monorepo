@@ -6,7 +6,11 @@ metadata:
   labels:
     {{- include "recipes.labels" . | nindent 4 }}
     app.kubernetes.io/component: web
-  {{- $ann := .Values.ingress.annotations }}
+  {{- $ann := .Values.ingress.annotations | default dict }}
+  {{- $tls := .Values.ingress.tls | default dict }}
+  {{- if and $tls.enabled $tls.clusterIssuer }}
+  {{- $ann = merge (dict "cert-manager.io/cluster-issuer" $tls.clusterIssuer) $ann }}
+  {{- end }}
   {{- if $ann }}
   annotations:
     {{- range $k, $v := $ann }}
@@ -16,6 +20,12 @@ metadata:
 spec:
   {{- if .Values.ingress.className }}
   ingressClassName: {{ .Values.ingress.className | quote }}
+  {{- end }}
+  {{- if $tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.host | quote }}
+      secretName: {{ $tls.secretName | quote }}
   {{- end }}
   rules:
     - host: {{ .Values.ingress.host | quote }}
