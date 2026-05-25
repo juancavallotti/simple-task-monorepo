@@ -17,6 +17,7 @@ type store interface {
 	DeleteEventByID(ctx context.Context, eventID string) error
 	IndexEvent(ctx context.Context, eventID string, force bool) error
 	ReindexEvents(ctx context.Context, opts traceops.ReindexEventsOptions) error
+	SearchEvents(ctx context.Context, query string, limit int) ([]types.EventMatch, error)
 	Wait()
 }
 
@@ -37,6 +38,11 @@ func (s *Service) IndexEvent(ctx context.Context, eventID string, force bool) er
 // ReindexEvents streams a bulk reindex pass through the store.
 func (s *Service) ReindexEvents(ctx context.Context, opts traceops.ReindexEventsOptions) error {
 	return s.store.ReindexEvents(ctx, opts)
+}
+
+// SearchEvents runs a semantic search and returns ranked events.
+func (s *Service) SearchEvents(ctx context.Context, query string, limit int) ([]types.EventMatch, error) {
+	return s.store.SearchEvents(ctx, query, limit)
 }
 
 // Wait blocks until in-flight async event-embedding work in the

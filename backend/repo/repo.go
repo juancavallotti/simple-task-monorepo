@@ -30,6 +30,11 @@ type (
 	IndexEventReport     = traceops.IndexEventReport
 )
 
+// ErrSearchDisabled is returned by Search* when no embedding API key
+// is configured. Re-exported so HTTP handlers and the CLI can branch
+// on it without importing the internal embeddings package.
+var ErrSearchDisabled = embeddings.ErrDisabled
+
 type Repo struct {
 	recipes    *recipesvc.Service
 	traces     *tracesvc.Service
@@ -115,6 +120,18 @@ func (r *Repo) IndexEvent(ctx context.Context, eventID string, force bool) error
 // is populated.
 func (r *Repo) ReindexEvents(ctx context.Context, opts ReindexEventsOptions) error {
 	return r.traces.ReindexEvents(ctx, opts)
+}
+
+// SearchRecipes runs a semantic-similarity search over recipe
+// embeddings and returns matches ranked by best chunk score.
+func (r *Repo) SearchRecipes(ctx context.Context, query string, limit int) ([]types.RecipeMatch, error) {
+	return r.recipes.SearchRecipes(ctx, query, limit)
+}
+
+// SearchEvents runs a semantic-similarity search over event
+// embeddings (one per event, keyed off user_prompt).
+func (r *Repo) SearchEvents(ctx context.Context, query string, limit int) ([]types.EventMatch, error) {
+	return r.traces.SearchEvents(ctx, query, limit)
 }
 
 func (r *Repo) LogTrace(ctx context.Context, eventID string, occurredAt time.Time, data json.RawMessage) error {

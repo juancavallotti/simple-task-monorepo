@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	types "juancavallotti.com/recipe-types"
 	"juancavallotti.com/recipes-repo/internal/embeddings"
 )
 
@@ -143,6 +144,52 @@ func (s *Store) ReindexEvents(ctx context.Context, opts ReindexEventsOptions) er
 		}
 	}
 	return nil
+}
+
+// SearchEvents runs a semantic-similarity search over the event
+// embeddings. One row per event in event_embeddings, so no GROUP BY
+// — the index ORDER BY uses the HNSW vector index directly.
+func (s *Store) SearchEvents(ctx context.Context, query string, limit int) ([]types.EventMatch, error) {
+	if s.db == nil {
+		return nil, errNilDB
+	}
+	if _, disabled := s.embed.(embeddings.Noop); disabled {
+		return nil, embeddings.ErrDisabled
+	}
+	if strings.TrimSpace(query) == "" {
+		return nil, errors.New("dbops/traces.SearchEvents: empty query")
+	}
+	if limit <= 0 {
+		limit = 10
+	}
+
+	vec, err := s.embed.Embed(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("embed query: %w", err)
+	}
+
+	rows, err := s.db.QueryContext(ctx, `
+SELECT e.event_id, e.started_at, e.ended_at, e.trace_count, COALESCE(e.user_prompt, ''),
+       1 - (ee.embedding <=> $1::vector) AS score
+FROM event_embeddings ee
+JOIN events e ON e.event_id = ee.event_id
+ORDER BY ee.embedding <=> $1::vector
+LIMIT $2`,
+		embeddings.FormatVector(vec), limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]types.EventMatch, 0, limit)
+	for rows.Next() {
+		var m types.EventMatch
+		if err := rows.Scan(&m.EventID, &m.StartedAt, &m.EndedAt, &m.TraceCount, &m.UserPrompt, &m.Score); err != nil {
+			return nil, err
+		}
+		out = append(out, m)
+	}
+	return out, rows.Err()
 }
 
 // indexEventAsync fires an embedding for eventID in a background

@@ -69,6 +69,10 @@ func (f *fakeStore) ReindexEvents(ctx context.Context, opts traceops.ReindexEven
 	return nil
 }
 
+func (f *fakeStore) SearchEvents(ctx context.Context, query string, limit int) ([]types.EventMatch, error) {
+	return nil, nil
+}
+
 func (f *fakeStore) Wait() {}
 
 func TestService_LogTrace_rejectsEmptyEventID(t *testing.T) {

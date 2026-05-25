@@ -91,6 +91,10 @@ func (f *fakeRecipeStore) ReindexRecipes(ctx context.Context, opts recipeops.Rei
 	return nil
 }
 
+func (f *fakeRecipeStore) SearchRecipes(ctx context.Context, query string, limit int) ([]types.RecipeMatch, error) {
+	return nil, nil
+}
+
 func (f *fakeRecipeStore) Wait() {}
 
 type fakeTraceStore struct {
@@ -142,6 +146,10 @@ func (f *fakeTraceStore) IndexEvent(ctx context.Context, eventID string, force b
 
 func (f *fakeTraceStore) ReindexEvents(ctx context.Context, opts traceops.ReindexEventsOptions) error {
 	return nil
+}
+
+func (f *fakeTraceStore) SearchEvents(ctx context.Context, query string, limit int) ([]types.EventMatch, error) {
+	return nil, nil
 }
 
 func (f *fakeTraceStore) Wait() {}

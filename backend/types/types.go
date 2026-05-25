@@ -47,3 +47,17 @@ type Skill struct {
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
+
+// RecipeMatch is a search result: a full recipe plus a similarity
+// score in [0,1] (cosine similarity, higher = closer match).
+type RecipeMatch struct {
+	Recipe
+	Score float64 `json:"score"`
+}
+
+// EventMatch is a search result: a full event plus a similarity
+// score in [0,1].
+type EventMatch struct {
+	Event
+	Score float64 `json:"score"`
+}

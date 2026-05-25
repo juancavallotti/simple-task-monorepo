@@ -19,6 +19,7 @@ type store interface {
 	DeleteRecipe(ctx context.Context, id string) error
 	IndexRecipe(ctx context.Context, id string) error
 	ReindexRecipes(ctx context.Context, opts recipeops.ReindexOptions) error
+	SearchRecipes(ctx context.Context, query string, limit int) ([]types.RecipeMatch, error)
 	Wait()
 }
 
@@ -41,6 +42,11 @@ func (s *Service) IndexRecipe(ctx context.Context, id string) error {
 // not a user-facing write.
 func (s *Service) ReindexRecipes(ctx context.Context, opts recipeops.ReindexOptions) error {
 	return s.store.ReindexRecipes(ctx, opts)
+}
+
+// SearchRecipes runs a semantic search and returns ranked recipes.
+func (s *Service) SearchRecipes(ctx context.Context, query string, limit int) ([]types.RecipeMatch, error) {
+	return s.store.SearchRecipes(ctx, query, limit)
 }
 
 // Wait blocks until in-flight async embedding work in the store has

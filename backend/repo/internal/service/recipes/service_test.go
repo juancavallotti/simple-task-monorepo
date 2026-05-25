@@ -84,6 +84,10 @@ func (f *fakeStore) ReindexRecipes(ctx context.Context, opts recipeops.ReindexOp
 	return nil
 }
 
+func (f *fakeStore) SearchRecipes(ctx context.Context, query string, limit int) ([]types.RecipeMatch, error) {
+	return nil, nil
+}
+
 func (f *fakeStore) Wait() {}
 
 func TestService_GetRecipes_NoValidation(t *testing.T) {

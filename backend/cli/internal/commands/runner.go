@@ -43,6 +43,8 @@ type EmbedRepo interface {
 	Embed(ctx context.Context, text string) ([]float32, error)
 	ReindexRecipes(ctx context.Context, opts repo.ReindexOptions) error
 	ReindexEvents(ctx context.Context, opts repo.ReindexEventsOptions) error
+	SearchRecipes(ctx context.Context, query string, limit int) ([]types.RecipeMatch, error)
+	SearchEvents(ctx context.Context, query string, limit int) ([]types.EventMatch, error)
 }
 
 type CommandRepo interface {
@@ -228,6 +230,10 @@ func (r Runner) Run(ctx context.Context, args []string) error {
 		return r.cmdEmbedTest(ctx, repo, args[1])
 	case "reindex":
 		return r.cmdReindex(ctx, repo, args[1:])
+	case "search-recipes":
+		return r.cmdSearch(ctx, repo, "recipes", args[1:])
+	case "search-events":
+		return r.cmdSearch(ctx, repo, "events", args[1:])
 	case "list-skills":
 		if len(args) != 1 {
 			return r.usageError("usage: recipes-cli list-skills")
@@ -299,6 +305,14 @@ Commands:
                                 streams one report object per line, agent-readable.
                                 Exit 0 = all ok, 1 = at least one row failed,
                                 2 = bad arguments.
+  search-recipes <query> [--limit N] [--json]
+                                Semantic search over recipes. Default output is
+                                SCORE\tID\tTITLE per line. --json emits one full
+                                RecipeMatch JSON object per line for agent use.
+  search-events <query> [--limit N] [--json]
+                                Semantic search over events by user_prompt. Default
+                                output is SCORE\tEVENT_ID\tPROMPT per line; --json
+                                emits one EventMatch object per line.
 
 `
 

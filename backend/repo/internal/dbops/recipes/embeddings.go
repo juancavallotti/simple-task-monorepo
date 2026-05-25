@@ -175,3 +175,73 @@ func joinNonEmpty(lines []string, sep string) string {
 	}
 	return strings.Join(out, sep)
 }
+
+// SearchRecipes runs a semantic-similarity search over the recipe
+// embeddings, hydrating each match into a full Recipe. Because each
+// recipe owns multiple chunks (summary / ingredients / directions),
+// the SQL groups by recipe_id and takes the best chunk score per
+// recipe. Empty query is rejected — the embedder errors on it and
+// the caller likely has a bug.
+func (s *Store) SearchRecipes(ctx context.Context, query string, limit int) ([]types.RecipeMatch, error) {
+	if s.db == nil {
+		return nil, errNilDB
+	}
+	if _, disabled := s.embed.(embeddings.Noop); disabled {
+		return nil, embeddings.ErrDisabled
+	}
+	if strings.TrimSpace(query) == "" {
+		return nil, errors.New("dbops/recipes.SearchRecipes: empty query")
+	}
+	if limit <= 0 {
+		limit = 10
+	}
+
+	vec, err := s.embed.Embed(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("embed query: %w", err)
+	}
+
+	rows, err := s.db.QueryContext(ctx, `
+SELECT recipe_id::text, MAX(1 - (embedding <=> $1::vector)) AS score
+FROM recipe_embeddings
+GROUP BY recipe_id
+ORDER BY score DESC
+LIMIT $2`,
+		embeddings.FormatVector(vec), limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	type hit struct {
+		id    string
+		score float64
+	}
+	hits := make([]hit, 0, limit)
+	for rows.Next() {
+		var h hit
+		if err := rows.Scan(&h.id, &h.score); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		hits = append(hits, h)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	matches := make([]types.RecipeMatch, 0, len(hits))
+	for _, h := range hits {
+		rec, err := s.GetRecipe(ctx, h.id)
+		if err != nil {
+			// Recipe may have been deleted between embedding and search;
+			// silently drop those rather than failing the whole call.
+			if errors.Is(err, ErrRecipeNotFound) {
+				continue
+			}
+			return nil, err
+		}
+		matches = append(matches, types.RecipeMatch{Recipe: rec, Score: h.score})
+	}
+	return matches, nil
+}
