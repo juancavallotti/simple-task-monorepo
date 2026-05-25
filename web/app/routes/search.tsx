@@ -1,8 +1,7 @@
-import { ChefHat } from "lucide-react";
-import { Link, useLoaderData } from "react-router";
+import { useLoaderData } from "react-router";
 
+import { RecipeRow } from "~/components/recipe-row";
 import type { RecipeMatch } from "~/lib/recipe-api";
-import { getRecipeDisplayPhotos } from "~/lib/recipe-photos";
 
 import type { Route } from "./+types/search";
 
@@ -95,7 +94,7 @@ export default function SearchRoute() {
       ) : null}
 
       {matches.length > 0 ? (
-        <ul className="mt-6 divide-y divide-zinc-100 overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-900">
+        <ul className="mt-6 flex flex-col gap-3">
           {matches.map((m) => (
             <SearchResultRow key={m.id} match={m} />
           ))}
@@ -106,49 +105,20 @@ export default function SearchRoute() {
 }
 
 function SearchResultRow({ match }: { match: RecipeMatch }) {
-  const photos = getRecipeDisplayPhotos(match);
-  const featured = photos[0];
   const scorePct = Math.round(match.score * 100);
   return (
-    <li>
-      <Link
-        to={`/recipe/${match.id}`}
-        className="flex items-start gap-4 px-4 py-3 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
-      >
-        <span className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
-          {featured != null ? (
-            <img src={featured.src} alt="" className="size-full object-cover" />
-          ) : (
-            <ChefHat
-              className="size-6 text-zinc-400 dark:text-zinc-500"
-              aria-hidden
-            />
-          )}
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <p className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-              {match.name}
-            </p>
-            {match.category !== "" ? (
-              <span className="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                {match.category}
-              </span>
-            ) : null}
-          </div>
-          {match.description !== "" ? (
-            <p className="mt-1 line-clamp-2 text-sm text-zinc-600 dark:text-zinc-400">
-              {match.description}
-            </p>
-          ) : null}
+    <RecipeRow
+      recipe={match}
+      trailing={
+        <div className="flex shrink-0 items-center pr-4">
+          <span
+            className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+            title={`Similarity score: ${match.score.toFixed(4)}`}
+          >
+            {scorePct}%
+          </span>
         </div>
-        <span
-          className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
-          title={`Similarity score: ${match.score.toFixed(4)}`}
-        >
-          {scorePct}%
-        </span>
-      </Link>
-    </li>
+      }
+    />
   );
 }
