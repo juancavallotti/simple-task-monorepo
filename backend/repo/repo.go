@@ -15,16 +15,24 @@ import (
 	recipeops "juancavallotti.com/recipes-repo/internal/dbops/recipes"
 	skillops "juancavallotti.com/recipes-repo/internal/dbops/skills"
 	traceops "juancavallotti.com/recipes-repo/internal/dbops/traces"
+	"juancavallotti.com/recipes-repo/internal/embeddings"
 	recipesvc "juancavallotti.com/recipes-repo/internal/service/recipes"
 	skillsvc "juancavallotti.com/recipes-repo/internal/service/skills"
 	tracesvc "juancavallotti.com/recipes-repo/internal/service/traces"
 )
 
 type Repo struct {
-	recipes *recipesvc.Service
-	traces  *tracesvc.Service
-	skills  *skillsvc.Service
-	pool    *sql.DB
+	recipes    *recipesvc.Service
+	traces     *tracesvc.Service
+	skills     *skillsvc.Service
+	embeddings embeddings.Client
+	pool       *sql.DB
+}
+
+// Embed produces a vector embedding for the given text. Returns
+// embeddings.ErrDisabled when no API key is configured.
+func (r *Repo) Embed(ctx context.Context, text string) ([]float32, error) {
+	return r.embeddings.Embed(ctx, text)
 }
 
 func (r *Repo) Ping(ctx context.Context) error {
@@ -125,11 +133,19 @@ func NewRepo() (*Repo, error) {
 		return nil, err
 	}
 
+	embedClient, embedProvider := embeddings.NewFromEnv()
+	if embedProvider == embeddings.ProviderNoop {
+		slog.Info("repo.embeddings_disabled", "reason", "no API key configured (set GEMINI_API_KEY or OPENAI_API_KEY)")
+	} else {
+		slog.Info("repo.embeddings_enabled", "provider", string(embedProvider), "dims", embeddings.Dimensions)
+	}
+
 	slog.Info("repo.initialized", "database", dbName)
 	return &Repo{
-		recipes: recipesvc.NewService(recipeops.NewStore(pool)),
-		traces:  tracesvc.NewService(traceops.NewStore(pool)),
-		skills:  skillsvc.NewService(skillops.NewStore(pool)),
-		pool:    pool,
+		recipes:    recipesvc.NewService(recipeops.NewStore(pool)),
+		traces:     tracesvc.NewService(traceops.NewStore(pool)),
+		skills:     skillsvc.NewService(skillops.NewStore(pool)),
+		embeddings: embedClient,
+		pool:       pool,
 	}, nil
 }

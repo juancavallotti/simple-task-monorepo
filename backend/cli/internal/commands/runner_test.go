@@ -65,6 +65,11 @@ type fakeRepo struct {
 	getSkillByNameArg    string
 	getSkillByNameResult types.Skill
 	getSkillByNameErr    error
+
+	embedCalls  int
+	embedInput  string
+	embedResult []float32
+	embedErr    error
 }
 
 type traceEntry struct {
@@ -174,6 +179,12 @@ func (f *fakeRepo) GetSkillByName(ctx context.Context, name string) (types.Skill
 	f.getSkillByNameCalls++
 	f.getSkillByNameArg = name
 	return f.getSkillByNameResult, f.getSkillByNameErr
+}
+
+func (f *fakeRepo) Embed(ctx context.Context, text string) ([]float32, error) {
+	f.embedCalls++
+	f.embedInput = text
+	return f.embedResult, f.embedErr
 }
 
 func testRunner(stdin string, repo CommandRepo, factoryCalls *int) (Runner, *bytes.Buffer, *bytes.Buffer) {
@@ -754,5 +765,36 @@ func TestRun_ListPrintsTable(t *testing.T) {
 		if !strings.Contains(got, want) {
 			t.Fatalf("list output = %q, want %q", got, want)
 		}
+	}
+}
+
+func TestRun_EmbedTestPrintsDimensions(t *testing.T) {
+	t.Parallel()
+	repo := &fakeRepo{embedResult: []float32{0.1, 0.2, 0.3, 0.4, 0.5, 0.6}}
+	factoryCalls := 0
+	r, stdout, _ := testRunner("", repo, &factoryCalls)
+	if err := r.Run(context.Background(), []string{"embed-test", "hello world"}); err != nil {
+		t.Fatalf("Run embed-test: %v", err)
+	}
+	if repo.embedCalls != 1 || repo.embedInput != "hello world" {
+		t.Fatalf("embed not called as expected: calls=%d input=%q", repo.embedCalls, repo.embedInput)
+	}
+	out := stdout.String()
+	if !strings.Contains(out, "dimensions=6") {
+		t.Fatalf("stdout = %q, want dimensions=6", out)
+	}
+}
+
+func TestRun_EmbedTestMissingArgIsUsageError(t *testing.T) {
+	t.Parallel()
+	repo := &fakeRepo{}
+	factoryCalls := 0
+	r, _, stderr := testRunner("", repo, &factoryCalls)
+	err := r.Run(context.Background(), []string{"embed-test"})
+	if !errors.Is(err, ErrUsage) {
+		t.Fatalf("err = %v, want ErrUsage", err)
+	}
+	if !strings.Contains(stderr.String(), "embed-test") {
+		t.Fatalf("stderr = %q, want usage hint", stderr.String())
 	}
 }

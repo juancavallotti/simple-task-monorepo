@@ -11,6 +11,8 @@
 
 BEGIN;
 
+CREATE EXTENSION IF NOT EXISTS vector;
+
 CREATE TABLE IF NOT EXISTS recipes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
@@ -97,6 +99,35 @@ CREATE TABLE IF NOT EXISTS traces (
 
 CREATE INDEX IF NOT EXISTS traces_event_id_idx ON traces (event_id);
 CREATE INDEX IF NOT EXISTS traces_event_id_occurred_at_idx ON traces (event_id, occurred_at);
+
+-- One row per chunk of a recipe. Today's chunks are: title + description,
+-- the ingredient list, and the directions — but the table doesn't care
+-- about that taxonomy; source_text is itself the chunk identity. Multi-chunk
+-- lets a query match the most relevant aspect (e.g. "tomato basil" hits
+-- the ingredient chunk; "weeknight dinner" hits the summary). Search
+-- aggregates with MAX(score) per recipe.
+CREATE TABLE IF NOT EXISTS recipe_embeddings (
+    recipe_id UUID NOT NULL REFERENCES recipes (id) ON DELETE CASCADE,
+    source_text TEXT NOT NULL,
+    embedding vector(768) NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (recipe_id, source_text),
+    CONSTRAINT recipe_embeddings_source_nonempty CHECK (length(trim(source_text)) > 0)
+);
+
+CREATE INDEX IF NOT EXISTS recipe_embeddings_recipe_id_idx ON recipe_embeddings (recipe_id);
+CREATE INDEX IF NOT EXISTS recipe_embeddings_vec_idx
+    ON recipe_embeddings USING hnsw (embedding vector_cosine_ops);
+
+CREATE TABLE IF NOT EXISTS event_embeddings (
+    event_id TEXT PRIMARY KEY REFERENCES events (event_id) ON DELETE CASCADE,
+    embedding vector(768) NOT NULL,
+    source_text TEXT NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS event_embeddings_vec_idx
+    ON event_embeddings USING hnsw (embedding vector_cosine_ops);
 
 CREATE TABLE IF NOT EXISTS skills (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -38,10 +38,15 @@ type SkillRepo interface {
 	GetSkillByName(ctx context.Context, name string) (types.Skill, error)
 }
 
+type EmbedRepo interface {
+	Embed(ctx context.Context, text string) ([]float32, error)
+}
+
 type CommandRepo interface {
 	RecipeRepo
 	TraceRepo
 	SkillRepo
+	EmbedRepo
 }
 
 type RepoFactory func() (CommandRepo, error)
@@ -203,6 +208,11 @@ func (r Runner) Run(ctx context.Context, args []string) error {
 		return r.cmdListEvents(ctx, repo, args[1:])
 	case "list-traces":
 		return r.cmdListTraces(ctx, repo, args[1:])
+	case "embed-test":
+		if len(args) != 2 {
+			return r.usageError("usage: recipes-cli embed-test <text>")
+		}
+		return r.cmdEmbedTest(ctx, repo, args[1])
 	case "list-skills":
 		if len(args) != 1 {
 			return r.usageError("usage: recipes-cli list-skills")
@@ -265,6 +275,8 @@ Commands:
   load-skill <name>             Print the markdown content of one skill to stdout.
                                 Exits non-zero if no skill has that name.
   schema                        Print the JSON Schema for create and patch payloads.
+  embed-test <text>             Smoke-test the embeddings client. Prints vector
+                                dimensions and a short preview.
 
 `
 
