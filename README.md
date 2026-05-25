@@ -140,7 +140,7 @@ The agent runs on its own container. It's built on top of Google ADK's `LLMAgent
 The `LLMAgent` in [agent/internal/copilot/copilot.go](agent/internal/copilot/copilot.go) is composed of three tools, a system prompt assembled from [agent/prompts/](agent/prompts/) plus the skill catalog, and a stack of before/after callbacks:
 
 - **`recipes_cli`** — shells out to the in-container `recipes-cli` binary to read, create, update, and delete recipes. This is the agent's only path to the database; it never speaks SQL directly.
-- **`generate_recipe_photo`** — calls the configured image generator (Gemini or OpenAI), writes the output to `AGENT_IMAGE_OUTPUT_DIR`, and returns a handle the CLI then attaches to the recipe. Concurrency is capped by `AGENT_IMAGE_GENERATION_CONCURRENCY`.
+- **`generate_recipe_photos`** — calls the configured image generator (Gemini or OpenAI), writes the output to `AGENT_IMAGE_OUTPUT_DIR`, and returns a handle the CLI then attaches to the recipe. Concurrency is capped by `AGENT_IMAGE_GENERATION_CONCURRENCY`.
 - **`issue_ui_actions`** — a structured tool the model calls to ask the browser to do something (navigate to a recipe, refresh the list, open a trace, etc.). The tool simply normalizes and echoes the actions back; the browser is the executor.
 
 A `BeforeModelCallback` ([agent/internal/copilot/context_window.go](agent/internal/copilot/context_window.go)) trims long sessions before they hit the model, and the `observability` callbacks (`ModelCallbacks`, `ToolCallbacks` in [agent/internal/observability/](agent/internal/observability/)) emit structured slog events plus per-turn trace events the UI can replay.
@@ -186,10 +186,10 @@ At query time ([search.go](backend/api/handlers/search.go)) the API embeds the u
 
 The Helm chart in [helm/](helm/) ships four workloads plus optional ingress:
 
-- **postgres** — `StatefulSet` with a `PersistentVolumeClaim` for `/var/lib/postgresql/data`, fronted by a headless `ClusterIP` Service. Credentials and database name come from a generated `Secret`. A one-shot `Job` runs the schema migration on install/upgrade.
+- **postgres** — `StatefulSet` with a `PersistentVolumeClaim` for `/var/lib/postgresql/data`, fronted by a `ClusterIP` Service. Credentials and database name come from a generated `Secret`. A one-shot `Job` runs the schema migration on install/upgrade.
 - **backend** — `Deployment` running `recipes-api`, exposed in-cluster as a `ClusterIP` Service. Reads Postgres creds from the postgres Secret.
 - **agent** — `Deployment` running `recipes-agent`, exposed in-cluster as a `ClusterIP` Service on port `4100`. Provider keys (`GEMINI_API_KEY`, optional `OPENAI_API_KEY` / `ANTHROPIC_API_KEY`) are mounted from the `recipes-agent` Secret. A scratch `emptyDir` (`/agent-images`, 100Mi) holds generated images before they're attached to recipes.
-- **web** — `Deployment` running the React Router SSR server behind a `NodePort` Service (port `3000`). Server-side loaders call the backend Service in-cluster; override with `web.recipesApiBase` if needed.
+- **web** — `Deployment` running the React Router SSR server on port `3000`. The fronting Service is `NodePort` by default and switches to `ClusterIP` when `ingress.enabled=true`. Server-side loaders call the backend Service in-cluster; override with `web.recipesApiBase` if needed.
 
 Ingress is opt-in (`ingress.enabled=true`, default class `nginx`, host `recipes.local`). When enabled, a single `Ingress` resource routes:
 
