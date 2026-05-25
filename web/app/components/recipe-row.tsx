@@ -2,6 +2,7 @@ import { ChefHat } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 
+import { toMarkdownPreview } from "~/lib/markdown-preview";
 import type { Recipe } from "~/lib/recipe-api";
 import { getRecipeDisplayPhotos } from "~/lib/recipe-photos";
 
@@ -20,6 +21,7 @@ export type RecipeRowProps = {
 export function RecipeRow({ recipe, trailing, footer }: RecipeRowProps) {
   const displayPhotos = getRecipeDisplayPhotos(recipe);
   const primaryPhoto = displayPhotos[0] ?? null;
+  const descriptionPreview = toMarkdownPreview(recipe.description);
 
   return (
     <li className="flex gap-2 rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
@@ -59,12 +61,12 @@ export function RecipeRow({ recipe, trailing, footer }: RecipeRowProps) {
               </span>
             ) : null}
           </div>
-          {recipe.description.trim() !== "" ? (
+          {descriptionPreview !== "" ? (
             <MarkdownView
               variant="preview"
               className="mt-1 line-clamp-2 text-sm text-zinc-600 dark:text-zinc-400"
             >
-              {recipe.description}
+              {descriptionPreview}
             </MarkdownView>
           ) : null}
           {footer != null ? (
