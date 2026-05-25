@@ -172,6 +172,16 @@ Critically, every cached `adkrest.Server` is constructed with the **same** `Sess
 
 The wire format is intentionally minimal: the client sends `modelContext` on the request body, the routing middleware strips it before ADK sees it, and the rest of the request is a stock ADK `/run` or `/run_sse` payload. No custom headers, no per-model routes, no client-side awareness of providers beyond the IDs the registry advertises.
 
+### Semantic Search
+
+Recipe and event search is powered by vector embeddings stored in Postgres via the [pgvector](https://github.com/pgvector/pgvector) extension. The schema in [database/db.sql](database/db.sql) declares `recipe_embeddings` and `event_embeddings` tables holding 768-dim vectors with HNSW cosine-similarity indexes.
+
+The [embeddings package](backend/repo/internal/embeddings/client.go) wraps two providers — Gemini and OpenAI — and picks one at startup based on `EMBEDDING_PROVIDER` and which API key (`GEMINI_API_KEY` / `OPENAI_API_KEY`) is set. With no key it falls back to a no-op client so local dev still builds; search endpoints then return `503` with `search disabled` until a key is configured.
+
+On every recipe write the repository fires an async re-index ([embeddings.go:136](backend/repo/internal/dbops/recipes/embeddings.go#L136)) that chunks the recipe into summary / ingredients / directions, embeds each chunk, and replaces its rows transactionally. A `recipes-cli reindex` command exists for backfills and bulk re-embeds.
+
+At query time ([search.go](backend/api/handlers/search.go)) the API embeds the user's query, runs a cosine-distance lookup against the chunk vectors, takes the best chunk per recipe, and hydrates results. A slim variant (`SearchRecipeChunks`) returns just `id / name / chunk / score` — used by the agent CLI to keep model context small.
+
 ### Kubernetes Topology
 
 The Helm chart in [helm/](helm/) ships four workloads plus optional ingress:
