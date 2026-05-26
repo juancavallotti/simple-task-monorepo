@@ -193,7 +193,7 @@ pipelines:
         echo "GEMINI_API_KEY is required. Set it in agent/.env or export it before running devspace."
         exit 1
       fi
-      kubectl create secret generic recipes-agent \
+      kubectl create secret generic recipes-agent -n ${DEVSPACE_NAMESPACE} \
         --from-literal=GEMINI_API_KEY="${GEMINI_API_KEY}" \
         --dry-run=client -o yaml | kubectl apply -f -
       create_deployments --all
@@ -205,7 +205,7 @@ pipelines:
         echo "GEMINI_API_KEY is required. Set it in agent/.env or export it before running devspace."
         exit 1
       fi
-      kubectl create secret generic recipes-agent \
+      kubectl create secret generic recipes-agent -n ${DEVSPACE_NAMESPACE} \
         --from-literal=GEMINI_API_KEY="${GEMINI_API_KEY}" \
         --dry-run=client -o yaml | kubectl apply -f -
       create_deployments --all
